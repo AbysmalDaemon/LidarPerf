@@ -123,9 +123,9 @@ class Trajectory:
 class EvaluationSupport:
     """Declared sensor/input time interval that an estimator was expected to cover.
 
-    Coverage must be measured against the input actually benchmarked, not against
-    whichever reference trajectory happens to be available on disk. This matters
-    for prefix/segment experiments where ground truth spans a longer sequence.
+    Coverage must be scoped to the input actually benchmarked rather than whichever
+    full reference trajectory happens to be available on disk. Accuracy evaluation
+    may use a smaller evaluable interval when ground truth does not cover all input.
     """
 
     start_ns: int
@@ -180,6 +180,8 @@ class AssociationStats:
     interpolated_pose_count: int
     max_abs_time_delta_ns: int | None
     mean_abs_time_delta_ns: float | None
+    input_support_start_ns: int
+    input_support_end_ns: int
     coverage_support_start_ns: int
     coverage_support_end_ns: int
     temporal_coverage: float
@@ -301,6 +303,8 @@ class TrajectoryEvaluation:
                 self.association.unmatched_estimate_pose_count
             ),
             "association.interpolated_pose_count": self.association.interpolated_pose_count,
+            "coverage.input_support_start_ns": self.association.input_support_start_ns,
+            "coverage.input_support_end_ns": self.association.input_support_end_ns,
             "coverage.support_start_ns": self.association.coverage_support_start_ns,
             "coverage.support_end_ns": self.association.coverage_support_end_ns,
             "coverage.temporal_fraction": self.association.temporal_coverage,

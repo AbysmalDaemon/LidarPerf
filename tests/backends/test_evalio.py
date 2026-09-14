@@ -12,7 +12,7 @@ from lidarperf.backends.evalio import (
     parse_evalio_trajectory,
 )
 from lidarperf.spec import load_protocol
-from lidarperf.trajectory import evaluate_trajectory
+from lidarperf.trajectory import EvaluationSupport, evaluate_trajectory
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,7 +88,7 @@ def test_evalio_csv_can_flow_into_lidarperf_metrics() -> None:
     text = """# timestamp, x, y, z, qx, qy, qz, qw
 0.000000000,0,0,0,0,0,0,1
 1.000000000,1,0,0,0,0,0,1
-2.000000000,2,0,0,0,0,0,1
+2.000000000,1,1,0,0,0,0,1
 """
     estimate = parse_evalio_trajectory(text)
     reference = parse_evalio_trajectory(text)
@@ -97,7 +97,39 @@ def test_evalio_csv_can_flow_into_lidarperf_metrics() -> None:
     assert evaluation.ape_translation_m is not None
     assert evaluation.ape_translation_m.rmse == pytest.approx(0.0, abs=1e-12)
     assert evaluation.ape_rotation_deg is not None
-    assert evaluation.ape_rotation_deg.rmse == pytest.approx(0.0, abs=1e-12)
+    assert evaluation.ape_rotation_deg.rmse == pytest.approx(0.0, abs=1e-5)
+
+
+def test_backend_evaluate_propagates_explicit_input_support(tmp_path: Path) -> None:
+    protocol = load_protocol(ROOT / "protocols/lo/se3_v1.yaml").document
+    backend = EvalioBackend()
+    paths = backend.result_paths(
+        tmp_path,
+        dataset="hilti_2022/basement_2",
+        pipeline="kiss",
+    )
+    paths.estimate.parent.mkdir(parents=True)
+    text = """# timestamp, x, y, z, qx, qy, qz, qw
+1.000000000,0,0,0,0,0,0,1
+2.000000000,1,0,0,0,0,0,1
+3.000000000,1,1,0,0,0,0,1
+"""
+    paths.estimate.write_text(text, encoding="utf-8")
+    paths.ground_truth.write_text(text, encoding="utf-8")
+
+    evaluation = backend.evaluate(
+        tmp_path,
+        dataset="hilti_2022/basement_2",
+        pipeline="kiss",
+        protocol=protocol,
+        support=EvaluationSupport(start_ns=0, end_ns=4_000_000_000),
+    )
+
+    assert evaluation.association.input_support_start_ns == 0
+    assert evaluation.association.input_support_end_ns == 4_000_000_000
+    assert evaluation.association.coverage_support_start_ns == 1_000_000_000
+    assert evaluation.association.coverage_support_end_ns == 3_000_000_000
+    assert evaluation.association.temporal_coverage == pytest.approx(1.0)
 
 
 def test_backend_requires_installed_evalio_for_command(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -38,6 +38,11 @@ jobs:
           print("kiss defaults", kiss.default_params())
           PY
 
+      - name: Validate repository before real-data download
+        run: |
+          ruff check .
+          pytest
+
       - name: Download public Hilti 2022 basement sequence
         run: |
           df -h .
@@ -64,11 +69,6 @@ jobs:
             --pipeline kiss \
             --length 120 \
             --output docs/validation/step8_kiss_evalio.json
-
-      - name: Validate repository
-        run: |
-          ruff check .
-          pytest
 
       - name: Commit integration evidence and remove one-shot workflow
         run: |
