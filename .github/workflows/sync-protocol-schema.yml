@@ -1,0 +1,69 @@
+name: Sync protocol schema and project log
+
+on:
+  push:
+    branches: [protocol-schema]
+    paths:
+      - .github/workflows/sync-protocol-schema.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: protocol-schema
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install pinned development environment
+        run: python -m pip install -e '.[dev]'
+      - name: Regenerate schema from source models
+        run: python scripts/export_schemas.py
+      - name: Record CI retries and schema drift fix
+        shell: bash
+        run: |
+          cat >> LidarPerf_research_execution_plan.md <<'EOF'
+
+          ### Remote CI retries for PR #2
+
+          The first remote CI pass for the protocol/schema implementation failed at Ruff before tests ran. Six formatting/static-style issues were reported across the new files: import grouping/order, one simplifiable conditional assignment, one overlong line, and test-file formatting. These were corrected in a follow-up commit.
+
+          A second CI pass reduced the failure set to one `I001` import-block error in `scripts/export_schemas.py`. I initially misread Ruff's compact diagnostic and removed the blank line between standard-library and first-party imports. That was the wrong interpretation: the actual remaining issue was an **extra blank line after the import block**, not the section separator. This produced a third failed lint pass.
+
+          **Fix:** restore the stdlib/first-party separator and remove the extra blank line between the final import and the module constant. This is a small formatting error, but it is recorded because the retry was caused by my diagnosis rather than by the project requirements.
+
+          **Learning:** when a formatter/linter provides an auto-fixable structural diagnostic, do not infer the exact patch from abbreviated terminal context if the tool itself can be used as the authority. In this environment Ruff is only available in remote CI, so exact diagnostics and remote revalidation are necessary.
+
+          After Ruff passed, CI reached the test suite and caught a more important publication error: `test_checked_in_json_schema_matches_model` failed because the JSON Schema committed through the connector had been manually reconstructed and did **not** exactly match Pydantic's generated schema. Differences included enum descriptions, definition ordering/default serialization, and the representation emitted for `JsonValue`.
+
+          #### Root cause
+
+          The local generated JSON Schema was correct and local tests passed. During connector publication, I manually supplied a schema payload instead of treating the generated artifact as machine-owned output. That created drift between source models and the checked-in derived artifact.
+
+          #### Fix
+
+          The schema is regenerated **from the committed Pydantic models on GitHub's runner** using `scripts/export_schemas.py`, rather than patched by hand. Ruff and pytest are then run against the regenerated working tree before it is committed.
+
+          A related reproducibility issue was identified at the same time: exact generated-schema equality can drift when the Pydantic generator version changes. The runtime dependency remains compatible with a wider Pydantic 2.x range, but the development/schema-generation environment is now pinned to Pydantic 2.13.5. Ruff and pytest are also pinned for deterministic project CI. Upgrading these tools later must be an explicit maintenance change rather than an accidental change caused by a new package release.
+
+          **Learning:** generated artifacts must remain generated artifacts, and the generator toolchain is part of their provenance. Never hand-maintain or manually reconstruct a checked-in schema whose exact equality to source models is itself an invariant.
+          EOF
+      - name: Validate regenerated tree
+        run: |
+          ruff check .
+          pytest
+      - name: Commit generated artifact and project record
+        shell: bash
+        run: |
+          rm .github/workflows/sync-protocol-schema.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --exit-code && exit 0
+          git commit -m 'chore: regenerate protocol schema and record CI fixes'
+          git push origin HEAD:protocol-schema
