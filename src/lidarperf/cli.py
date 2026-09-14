@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import typer
 
 from ._version import __version__
+from .bundle import VerificationStatus, verify_bundle
 from .spec import ProtocolLoadError, load_protocol
 from .synthetic import SyntheticFixtureConfig, write_fixture
 
@@ -42,6 +44,19 @@ def main(
     """Run LidarPerf."""
     if ctx.invoked_subcommand is None and not version:
         typer.echo(ctx.get_help())
+
+
+@app.command("verify")
+def verify_result(path: Path) -> None:
+    """Verify a LidarPerf result bundle's schema, provenance links, and checksums."""
+
+    report = verify_bundle(path)
+    typer.echo(report.status.value)
+    for issue in report.issues:
+        stream = sys.stderr if issue.severity.value == "error" else sys.stdout
+        typer.echo(f"{issue.severity.value.upper()} [{issue.code}] {issue.message}", file=stream)
+    if report.status == VerificationStatus.INVALID:
+        raise typer.Exit(code=2)
 
 
 @protocol_app.command("validate")
