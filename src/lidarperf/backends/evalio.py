@@ -10,7 +10,13 @@ from io import StringIO
 from pathlib import Path, PurePosixPath
 
 from lidarperf.spec.models import BenchmarkProtocol
-from lidarperf.trajectory import Trajectory, TrajectoryEvaluation, evaluate_trajectory, parse_tum
+from lidarperf.trajectory import (
+    EvaluationSupport,
+    Trajectory,
+    TrajectoryEvaluation,
+    evaluate_trajectory,
+    parse_tum,
+)
 
 from .models import CommandSpec
 
@@ -195,6 +201,7 @@ def evaluate_evalio_outputs(
     protocol: BenchmarkProtocol,
     *,
     body_frame: str | None = None,
+    support: EvaluationSupport | None = None,
 ) -> TrajectoryEvaluation:
     """Evaluate one evalio result using LidarPerf's protocol-defined metrics."""
 
@@ -205,7 +212,7 @@ def evaluate_evalio_outputs(
         raise EvalioOutputError(f"evalio normalized ground truth is missing: {paths.ground_truth}")
     estimate = load_evalio_trajectory(paths.estimate, body_frame=frame)
     reference = load_evalio_trajectory(paths.ground_truth, body_frame=frame)
-    return evaluate_trajectory(estimate, reference, protocol)
+    return evaluate_trajectory(estimate, reference, protocol, support=support)
 
 
 class EvalioBackend:
@@ -258,6 +265,7 @@ class EvalioBackend:
         dataset: str,
         pipeline: str,
         protocol: BenchmarkProtocol,
+        support: EvaluationSupport | None = None,
     ) -> TrajectoryEvaluation:
         paths = self.result_paths(output_dir, dataset=dataset, pipeline=pipeline)
-        return evaluate_evalio_outputs(paths, protocol)
+        return evaluate_evalio_outputs(paths, protocol, support=support)
