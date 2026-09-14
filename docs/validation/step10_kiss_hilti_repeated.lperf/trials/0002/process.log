@@ -1,0 +1,12 @@
+evalio run -o .step10_work/run/trials/0002/evalio -d hilti_2022/basement_2 -p kiss -l 120
+
+
+--------------------------------------------------------------------------------
+
+
+Running 1 dataset => 1 experiment
+Estimated time (if real-time): 12.00 seconds
+Output will be saved to .step10_work/run/trials/0002/evalio
+
+Running kiss on hilti_2022/basement_2
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 120/120  [ 0:00:03 < 0:00:00 , 42 it/s ]
