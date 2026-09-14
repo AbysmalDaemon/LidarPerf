@@ -1,6 +1,7 @@
 {
   "$defs": {
     "AlignmentMode": {
+      "description": "Trajectory alignment allowed by an evaluation profile.",
       "enum": [
         "none",
         "origin",
@@ -10,6 +11,7 @@
       "type": "string"
     },
     "CachePolicy": {
+      "description": "Dataset I/O cache policy for a benchmark trial.",
       "enum": [
         "warm",
         "cold",
@@ -51,7 +53,9 @@
       "title": "EstimatorSemanticsPolicy",
       "type": "object"
     },
+    "JsonValue": {},
     "MeasurementClass": {
+      "description": "Strength of the execution environment and repetition evidence.",
       "enum": [
         "exploratory",
         "controlled",
@@ -66,8 +70,8 @@
       "properties": {
         "allowed_classes": {
           "default": [
-            "exploratory",
             "controlled",
+            "exploratory",
             "publication"
           ],
           "items": {
@@ -98,6 +102,7 @@
       "type": "object"
     },
     "MotionCompensationInputState": {
+      "description": "Whether the estimator input has already been motion compensated.",
       "enum": [
         "raw",
         "pre_deskewed",
@@ -136,6 +141,7 @@
       "type": "object"
     },
     "MotionSource": {
+      "description": "Motion source used to deskew a LiDAR scan.",
       "enum": [
         "none",
         "constant_velocity",
@@ -205,6 +211,7 @@
       "type": "object"
     },
     "PreprocessingOwner": {
+      "description": "Owner of a preprocessing operation.",
       "enum": [
         "dataset",
         "benchmark",
@@ -339,6 +346,7 @@
       "type": "object"
     },
     "Sensor": {
+      "description": "Runtime information sources whose use can affect benchmark conformance.",
       "enum": [
         "lidar",
         "imu",
@@ -392,6 +400,7 @@
       "type": "object"
     },
     "TemporalMode": {
+      "description": "Estimator temporal semantics.",
       "enum": [
         "online_causal",
         "online_fixed_lag",
@@ -441,6 +450,7 @@
       "type": "object"
     },
     "TimestampAssociationMode": {
+      "description": "How estimator and reference trajectory timestamps are associated.",
       "enum": [
         "exact",
         "nearest",
@@ -470,6 +480,7 @@
       "type": "object"
     },
     "TimingScope": {
+      "description": "Performance timing boundary.",
       "enum": [
         "compute",
         "pipeline",
@@ -479,6 +490,7 @@
       "type": "string"
     },
     "Track": {
+      "description": "Estimator track supported by the v0.1 protocol schema.",
       "enum": [
         "lo",
         "lio"
@@ -537,6 +549,7 @@
       "type": "object"
     },
     "TuningClass": {
+      "description": "Granularity at which estimator configuration may be selected.",
       "enum": [
         "frozen",
         "dataset",
@@ -551,8 +564,8 @@
       "properties": {
         "allowed_classes": {
           "default": [
-            "frozen",
             "dataset",
+            "frozen",
             "sequence"
           ],
           "items": {
@@ -596,34 +609,49 @@
       ],
       "title": "ValidityPolicy",
       "type": "object"
-    },
-    "JsonValue": {
-      "anyOf": [
-        {"type": "string"},
-        {"type": "number"},
-        {"type": "integer"},
-        {"type": "boolean"},
-        {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
-        {"type": "array", "items": {"$ref": "#/$defs/JsonValue"}},
-        {"type": "null"}
-      ]
     }
   },
   "additionalProperties": false,
   "description": "Fully explicit v0.1 LidarPerf protocol document.",
   "properties": {
-    "estimator_semantics": {"$ref": "#/$defs/EstimatorSemanticsPolicy"},
-    "measurement": {"$ref": "#/$defs/MeasurementPolicy"},
-    "preprocessing": {"$ref": "#/$defs/PreprocessingPolicy"},
-    "protocol": {"$ref": "#/$defs/ProtocolIdentity"},
-    "repetition": {"$ref": "#/$defs/RepetitionPolicy"},
-    "sensors": {"$ref": "#/$defs/SensorPolicy"},
-    "spec_version": {"const": "0.1.0", "title": "Spec Version", "type": "string"},
-    "timing": {"$ref": "#/$defs/TimingPolicy"},
-    "track": {"$ref": "#/$defs/Track"},
-    "trajectory": {"$ref": "#/$defs/TrajectoryPolicy"},
-    "tuning": {"$ref": "#/$defs/TuningPolicy"},
-    "validity": {"$ref": "#/$defs/ValidityPolicy"}
+    "estimator_semantics": {
+      "$ref": "#/$defs/EstimatorSemanticsPolicy"
+    },
+    "measurement": {
+      "$ref": "#/$defs/MeasurementPolicy"
+    },
+    "preprocessing": {
+      "$ref": "#/$defs/PreprocessingPolicy"
+    },
+    "protocol": {
+      "$ref": "#/$defs/ProtocolIdentity"
+    },
+    "repetition": {
+      "$ref": "#/$defs/RepetitionPolicy"
+    },
+    "sensors": {
+      "$ref": "#/$defs/SensorPolicy"
+    },
+    "spec_version": {
+      "const": "0.1.0",
+      "title": "Spec Version",
+      "type": "string"
+    },
+    "timing": {
+      "$ref": "#/$defs/TimingPolicy"
+    },
+    "track": {
+      "$ref": "#/$defs/Track"
+    },
+    "trajectory": {
+      "$ref": "#/$defs/TrajectoryPolicy"
+    },
+    "tuning": {
+      "$ref": "#/$defs/TuningPolicy"
+    },
+    "validity": {
+      "$ref": "#/$defs/ValidityPolicy"
+    }
   },
   "required": [
     "spec_version",
