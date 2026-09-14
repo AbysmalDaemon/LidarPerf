@@ -1,0 +1,33 @@
+name: Step 10 preflight
+
+on:
+  push:
+    branches: [step10-repeated-runs]
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Validate Step 10 core
+        run: |
+          ruff check .
+          pytest
+      - name: Remove one-shot preflight
+        if: success()
+        run: |
+          git rm .github/workflows/step10-preflight.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci: remove Step 10 preflight'
+          git push
