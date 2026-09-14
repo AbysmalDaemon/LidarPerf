@@ -227,6 +227,8 @@ def test_temporal_coverage_is_reference_duration_fraction() -> None:
     estimate = reference.subset([1, 2, 3])
     evaluation = evaluate_trajectory(estimate, reference, _protocol(coverage=0.8))
     assert evaluation.association.temporal_coverage == pytest.approx(0.5)
+    assert evaluation.association.distance_coverage is not None
+    assert 0.0 < evaluation.association.distance_coverage < 1.0
     assert evaluation.temporal_coverage_pass is False
 
 

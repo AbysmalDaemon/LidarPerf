@@ -130,9 +130,11 @@ class TimestampAssociation(StrictModel):
 
 
 class RelativeErrorWindow(StrictModel):
-    """Distance window requested for relative trajectory error."""
+    """Distance window plus explicit reference-path pairing semantics."""
 
     distance_m: float = Field(gt=0)
+    pairing: Literal["all_starts_nearest_reference_distance"]
+    relative_tolerance: float = Field(ge=0, le=1)
 
 
 class TrajectoryPolicy(StrictModel):

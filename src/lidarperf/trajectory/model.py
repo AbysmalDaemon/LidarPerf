@@ -22,7 +22,7 @@ class TrajectoryFormatError(TrajectoryError):
 class TrajectoryValidationError(TrajectoryError):
     """Raised when structurally invalid trajectory data reaches an evaluator."""
 
-    def __init__(self, message: str, report: "TrajectoryValidationReport") -> None:
+    def __init__(self, message: str, report: TrajectoryValidationReport) -> None:
         super().__init__(message)
         self.report = report
 
@@ -109,7 +109,7 @@ class Trajectory:
             return 0
         return int(self.timestamps_ns[-1] - self.timestamps_ns[0])
 
-    def subset(self, indices: NDArray[np.integer] | list[int] | tuple[int, ...]) -> "Trajectory":
+    def subset(self, indices: NDArray[np.integer] | list[int] | tuple[int, ...]) -> Trajectory:
         resolved = np.asarray(indices, dtype=np.int64)
         return Trajectory(
             timestamps_ns=self.timestamps_ns[resolved],
@@ -160,6 +160,7 @@ class AssociationStats:
     max_abs_time_delta_ns: int | None
     mean_abs_time_delta_ns: float | None
     temporal_coverage: float
+    distance_coverage: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,8 +281,12 @@ class TrajectoryEvaluation:
             "coverage.temporal_fraction": self.association.temporal_coverage,
             "coverage.temporal_min_required": self.temporal_coverage_min,
             "coverage.temporal_pass": self.temporal_coverage_pass,
+            "trajectory.estimate.invalid_pose_count": self.estimate_validation.invalid_pose_count,
+            "trajectory.reference.invalid_pose_count": self.reference_validation.invalid_pose_count,
             "alignment.transform": self.alignment.as_dict(),
         }
+        if self.association.distance_coverage is not None:
+            values["coverage.distance_fraction"] = self.association.distance_coverage
         if self.association.max_abs_time_delta_ns is not None:
             values["association.max_abs_time_delta_ns"] = self.association.max_abs_time_delta_ns
         if self.association.mean_abs_time_delta_ns is not None:

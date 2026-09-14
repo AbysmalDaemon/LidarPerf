@@ -37,6 +37,20 @@ def _coverage(reference: Trajectory, matched_estimate_timestamps: np.ndarray) ->
     return (overlap_end - overlap_start) / reference.duration_ns
 
 
+def _path_length(positions: np.ndarray) -> float:
+    if positions.shape[0] < 2:
+        return 0.0
+    return float(np.linalg.norm(np.diff(positions, axis=0), axis=1).sum())
+
+
+def _distance_coverage(reference: Trajectory, matched_reference: Trajectory) -> float | None:
+    full_distance = _path_length(reference.positions_m)
+    if full_distance <= np.finfo(np.float64).eps:
+        return 1.0 if len(matched_reference) else 0.0
+    matched_distance = _path_length(matched_reference.positions_m)
+    return min(1.0, matched_distance / full_distance)
+
+
 def _nearest_reference_index(reference_timestamps: np.ndarray, timestamp: int) -> int:
     insertion = int(np.searchsorted(reference_timestamps, timestamp, side="left"))
     candidates: list[int] = []
@@ -171,6 +185,7 @@ def associate_trajectories(
         max_abs_time_delta_ns=int(abs_deltas.max()) if abs_deltas.size else None,
         mean_abs_time_delta_ns=float(abs_deltas.mean()) if abs_deltas.size else None,
         temporal_coverage=_coverage(reference, matched_estimate.timestamps_ns),
+        distance_coverage=_distance_coverage(reference, matched_reference),
     )
     return AssociatedTrajectories(
         estimate=matched_estimate,
