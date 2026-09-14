@@ -2,7 +2,7 @@
 
 from .canonical import canonical_json_bytes, sha256_fingerprint
 from .loader import ProtocolLoadError, load_protocol, protocol_json_schema, resolve_protocol_data
-from .models import BenchmarkProtocol, ResolvedProtocol, SPEC_VERSION
+from .models import SPEC_VERSION, BenchmarkProtocol, ResolvedProtocol
 
 __all__ = [
     "BenchmarkProtocol",

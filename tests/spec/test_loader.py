@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from lidarperf.spec import ProtocolLoadError, load_protocol, protocol_json_schema, resolve_protocol_data
+from lidarperf.spec import (
+    ProtocolLoadError,
+    load_protocol,
+    protocol_json_schema,
+    resolve_protocol_data,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 

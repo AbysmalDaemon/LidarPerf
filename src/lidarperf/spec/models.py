@@ -185,7 +185,9 @@ class MotionCompensationPolicy(StrictModel):
         if self.performed_by == PreprocessingOwner.NONE and self.motion_source != MotionSource.NONE:
             raise ValueError("motion_source must be none when performed_by is none")
         if self.performed_by == PreprocessingOwner.NONE and self.parameters:
-            raise ValueError("motion-compensation parameters must be empty when performed_by is none")
+            raise ValueError(
+                "motion-compensation parameters must be empty when performed_by is none"
+            )
         if self.performed_by != PreprocessingOwner.NONE and self.motion_source == MotionSource.NONE:
             raise ValueError("a performed motion-compensation stage requires a motion_source")
         return self

@@ -24,10 +24,8 @@ def _load_mapping(path: Path) -> dict[str, Any]:
         raise ProtocolLoadError(f"unable to read protocol file {path}: {exc}") from exc
 
     try:
-        if path.suffix.lower() == ".json":
-            value = json.loads(text)
-        else:
-            value = yaml.safe_load(text)
+        parser = json.loads if path.suffix.lower() == ".json" else yaml.safe_load
+        value = parser(text)
     except (json.JSONDecodeError, yaml.YAMLError) as exc:
         raise ProtocolLoadError(f"unable to parse protocol file {path}: {exc}") from exc
 
