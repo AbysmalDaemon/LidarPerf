@@ -3274,3 +3274,12 @@ Trial count is necessary but not sufficient for measurement strength. A repeated
 ### Step 10 exit condition
 
 Satisfied when the final PR matrix passes on Python 3.11/3.12/3.13, PR #11 is squash-merged, and post-merge `main` CI is green. Controlled real performance evidence is intentionally deferred until a stable controlled Linux benchmark host is available; it is not a blocker for Step 11 comparator development.
+
+### Step 10 post-merge closure — 2026-09-14
+
+- PR #11 was squash-merged as 79e6e840a68f6b8f4a8393bd39ddd2167143c6bf.
+- Post-merge main CI run 34900803913 passed on Python 3.11, 3.12, and 3.13.
+- Final validation before merge collected 134 tests; all 134 passed, Ruff passed, and the repeated bundle verified VALID.
+- A final evidence-packaging trap was discovered after semantic cleanup: .lperf directories are gitignored, so renaming the validated controlled-named directory to the exploratory repeated name succeeded in the workflow worktree but git add -A recorded only the deletion. The already-successful bundle was restored from Git history, relabeled exploratory, checksums regenerated, independently verified, and force-added without rerunning the 6.3 GB Hilti download or estimator trials.
+- Durable Step 10 evidence is docs/validation/step10_kiss_hilti_repeated.lperf/ and remains explicitly non-authoritative for performance because it was produced on an ordinary GitHub-hosted runner.
+- Step 10 is complete. Step 11 comparator work is next; controlled real performance evidence is deferred until a stable controlled Linux host is available.
