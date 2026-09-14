@@ -77,6 +77,28 @@ def _required_trial_count(protocol, measurement_class: MeasurementClass) -> int:
     return protocol.repetition.publication_min_trials
 
 
+def _execution_record(
+    *,
+    backend: str,
+    backend_version: str | None,
+    command_argv: tuple[str, ...],
+    timing_scope: str,
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "backend": backend,
+        "backend_version": backend_version,
+        "command_argv": list(command_argv),
+        "timing_scope": timing_scope,
+    }
+    extra = dict(metadata or {})
+    overlap = set(record) & set(extra)
+    if overlap:
+        raise ValueError(f"execution_metadata cannot replace reserved keys: {sorted(overlap)}")
+    record.update(extra)
+    return record
+
+
 def run_evalio_benchmark(
     *,
     protocol_path: str | Path,
@@ -93,6 +115,7 @@ def run_evalio_benchmark(
     resource_limits: ResourceLimits | None = None,
     method_source: MethodSourceRecord | None = None,
     host_snapshot: HostSnapshot | None = None,
+    execution_metadata: dict[str, Any] | None = None,
     evalio_backend: EvalioBackend | None = None,
     execution_backend: BenchExecBackend | None = None,
 ) -> tuple[ResultManifest, VerificationReport]:
@@ -172,6 +195,13 @@ def run_evalio_benchmark(
         estimate_invalid_pose_count=evaluation.estimate_validation.invalid_pose_count,
         reference_invalid_pose_count=evaluation.reference_validation.invalid_pose_count,
     )
+    execution_record = _execution_record(
+        backend=execution.backend,
+        backend_version=execution.backend_version,
+        command_argv=command.argv,
+        timing_scope=resolved.document.timing.scope.value,
+        metadata=execution_metadata,
+    )
 
     writer = ResultBundleWriter(bundle_dir)
     writer.write_text("protocol.yaml", protocol_source.read_text(encoding="utf-8"))
@@ -196,12 +226,7 @@ def run_evalio_benchmark(
                 "lidarperf": __version__,
                 "evalio": evalio_capability.version,
             },
-            execution={
-                "backend": execution.backend,
-                "backend_version": execution.backend_version,
-                "command_argv": list(command.argv),
-                "timing_scope": resolved.document.timing.scope.value,
-            },
+            execution=execution_record,
         ),
     )
     writer.write_json(
