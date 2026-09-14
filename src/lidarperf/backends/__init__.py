@@ -7,10 +7,17 @@ from .benchexec import (
     BenchExecUnavailableError,
     parse_runexec_stdout,
 )
-from .models import CommandExecutionResult, CommandSpec, ExecutionMeasurements, ResourceLimits
+from .models import (
+    BenchExecCapability,
+    CommandExecutionResult,
+    CommandSpec,
+    ExecutionMeasurements,
+    ResourceLimits,
+)
 
 __all__ = [
     "BenchExecBackend",
+    "BenchExecCapability",
     "BenchExecError",
     "BenchExecOutputError",
     "BenchExecUnavailableError",
