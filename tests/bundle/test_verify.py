@@ -188,3 +188,29 @@ def test_bundle_root_symlink_is_invalid(tmp_path: Path, write_bundle) -> None:
     report = verify_bundle(link)
     assert report.status == VerificationStatus.INVALID
     assert _codes(report) == {"BUNDLE_SYMLINK"}
+
+
+def test_measurement_class_minimum_trial_count_is_verified(
+    valid_bundle: Path,
+    refresh_checksums,
+) -> None:
+    manifest_path = valid_bundle / "manifest.json"
+    environment_path = valid_bundle / "environment.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    environment = json.loads(environment_path.read_text(encoding="utf-8"))
+    manifest["measurement_class"] = "controlled"
+    environment["measurement_class"] = "controlled"
+    manifest_path.write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    environment_path.write_text(
+        json.dumps(environment, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    refresh_checksums(valid_bundle)
+
+    report = verify_bundle(valid_bundle)
+
+    assert report.status == VerificationStatus.INVALID
+    assert "MEASUREMENT_TRIAL_COUNT_TOO_LOW" in _codes(report)
