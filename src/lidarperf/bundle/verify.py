@@ -12,8 +12,14 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from lidarperf.repeatability import (
+    RepeatabilityError,
+    scalar_distributions,
+    trajectory_repeatability,
+)
 from lidarperf.spec import ProtocolLoadError, load_protocol, sha256_fingerprint
 from lidarperf.spec.enums import MeasurementClass
+from lidarperf.trajectory import TrajectoryError, parse_tum
 
 from .models import (
     AggregateRecord,
@@ -371,6 +377,9 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
 
     successful_trials = 0
     failed_trials = 0
+    successful_metric_records: list[dict[str, Any]] = []
+    successful_resource_records: list[dict[str, Any]] = []
+    successful_trajectories = []
     for trial_index in range(1, manifest.trial_count + 1):
         directory = f"trials/{trial_index:04d}"
         for filename in _REQUIRED_TRIAL_FILES:
@@ -395,6 +404,36 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
                 )
             if trial.status == TrialStatus.SUCCESS:
                 successful_trials += 1
+                metrics = _load_json(
+                    root / directory / "metrics.json",
+                    MetricsRecord,
+                    collector,
+                    "METRICS_INVALID",
+                )
+                resources = _load_json(
+                    root / directory / "resources.json",
+                    ResourcesRecord,
+                    collector,
+                    "RESOURCES_INVALID",
+                )
+                if metrics is not None:
+                    successful_metric_records.append(metrics.values)
+                if resources is not None:
+                    successful_resource_records.append(resources.values)
+                trajectory_path = root / directory / "trajectory.tum"
+                if trajectory_path.is_file() and resolved_protocol is not None:
+                    try:
+                        successful_trajectories.append(
+                            parse_tum(
+                                trajectory_path.read_text(encoding="utf-8"),
+                                body_frame=resolved_protocol.trajectory.evaluation_frame,
+                            )
+                        )
+                    except (OSError, TrajectoryError) as exc:
+                        collector.error(
+                            "TRAJECTORY_INVALID",
+                            f"{directory}/trajectory.tum: {exc}",
+                        )
             else:
                 failed_trials += 1
 
@@ -415,4 +454,34 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
                 "aggregate trial counts do not match manifest trial_count",
             )
 
+
+    if aggregate is not None and manifest.trial_count > 1:
+        if aggregate.metrics.get("summary_schema") != "lidarperf.repeatability.v1":
+            collector.error(
+                "AGGREGATE_REPEATABILITY_SCHEMA_MISSING",
+                "multi-trial bundles require lidarperf.repeatability.v1 aggregate summaries",
+            )
+        expected_metrics = scalar_distributions(successful_metric_records)
+        if aggregate.metrics.get("trial_metrics") != expected_metrics:
+            collector.error(
+                "AGGREGATE_METRIC_DISTRIBUTION_MISMATCH",
+                "aggregate trial-metric distributions do not match measured trial payloads",
+            )
+        expected_resources = scalar_distributions(successful_resource_records)
+        if aggregate.metrics.get("resources") != expected_resources:
+            collector.error(
+                "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH",
+                "aggregate resource distributions do not match measured trial payloads",
+            )
+        if len(successful_trajectories) >= 2:
+            try:
+                expected_repeatability = trajectory_repeatability(successful_trajectories)
+            except RepeatabilityError as exc:
+                collector.error("TRAJECTORY_REPEATABILITY_INVALID", str(exc))
+            else:
+                if aggregate.metrics.get("trajectory_repeatability") != expected_repeatability:
+                    collector.error(
+                        "AGGREGATE_TRAJECTORY_REPEATABILITY_MISMATCH",
+                        "aggregate trajectory repeatability does not match trial trajectories",
+                    )
     return collector.report()

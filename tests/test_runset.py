@@ -15,7 +15,12 @@ from lidarperf.backends import (
     ExecutionMeasurements,
     ResourceLimits,
 )
-from lidarperf.bundle import DatasetFingerprintClass, DatasetRecord, VerificationStatus
+from lidarperf.bundle import (
+    DatasetFingerprintClass,
+    DatasetRecord,
+    VerificationStatus,
+    verify_bundle,
+)
 from lidarperf.runner import BenchmarkRunError
 from lidarperf.runset import run_evalio_repeated_benchmark
 from lidarperf.spec.enums import MeasurementClass
@@ -217,3 +222,48 @@ def test_failed_measured_trial_is_retained_as_runset_evidence(tmp_path: Path) ->
     assert aggregate["successful_trials"] == 2
     assert aggregate["failed_trials"] == 1
     assert aggregate["metrics"]["resources"]["wall_time_s"]["count"] == 2
+
+
+def _refresh_checksum(bundle: Path, relative_path: str) -> None:
+    digest = hashlib.sha256((bundle / relative_path).read_bytes()).hexdigest()
+    checksum_path = bundle / "checksums.sha256"
+    lines = checksum_path.read_text(encoding="utf-8").splitlines()
+    rewritten = [
+        f"{digest}  {relative_path}" if line.endswith(f"  {relative_path}") else line
+        for line in lines
+    ]
+    checksum_path.write_text("\n".join(rewritten) + "\n", encoding="utf-8")
+
+
+def test_verifier_recomputes_runset_resource_distributions(tmp_path: Path) -> None:
+    bundle = tmp_path / "result.lperf"
+    run_evalio_repeated_benchmark(
+        protocol_path="protocols/lo/se3_v1.yaml",
+        dataset="example/sequence",
+        pipeline="kiss",
+        length=4,
+        input_support=None,
+        dataset_record=dataset_record(),
+        algorithm_config={},
+        method_version="1.3.0",
+        bundle_dir=bundle,
+        workspace=tmp_path / "work",
+        measurement_class=MeasurementClass.CONTROLLED,
+        measured_trials=5,
+        warmup_trials=0,
+        evalio_backend=FakeEvalioBackend(),
+        execution_backend=FakeBenchExecBackend(),
+    )
+    aggregate_path = bundle / "aggregate.json"
+    aggregate = json.loads(aggregate_path.read_text(encoding="utf-8"))
+    aggregate["metrics"]["resources"]["wall_time_s"]["median"] = 999.0
+    aggregate_path.write_text(
+        json.dumps(aggregate, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    _refresh_checksum(bundle, "aggregate.json")
+    report = verify_bundle(bundle)
+    assert report.status == VerificationStatus.INVALID
+    assert "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH" in {
+        issue.code for issue in report.issues
+    }
