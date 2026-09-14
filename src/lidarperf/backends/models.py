@@ -61,6 +61,29 @@ class ExecutionMeasurements(StrictFrozenModel):
         return self.cpu_time_s / self.wall_time_s
 
 
+class BenchExecCapability(StrictFrozenModel):
+    """Result of an active, harmless BenchExec capability probe."""
+
+    schema_version: Literal["lidarperf.benchexec-capability.v1"] = (
+        "lidarperf.benchexec-capability.v1"
+    )
+    backend: Literal["benchexec-runexec"] = "benchexec-runexec"
+    backend_version: str | None = None
+    installed: bool
+    controlled_ready: bool
+    reason: str | None = None
+
+    @model_validator(mode="after")
+    def readiness_has_consistent_reason(self) -> Self:
+        if self.controlled_ready and not self.installed:
+            raise ValueError("a controlled-ready backend must be installed")
+        if self.controlled_ready and self.reason is not None:
+            raise ValueError("a controlled-ready backend must not have a failure reason")
+        if not self.controlled_ready and not self.reason:
+            raise ValueError("an unavailable backend requires a reason")
+        return self
+
+
 class CommandExecutionResult(StrictFrozenModel):
     """Normalized result of one BenchExec-backed process execution."""
 
