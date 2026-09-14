@@ -1,0 +1,37 @@
+name: Finalize Step 8 documentation
+
+on:
+  push:
+    branches: [evalio-kiss]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install development dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Finalize documentation and specification clarification
+        run: python scripts/finalize_step8_docs.py
+      - name: Remove one-shot finalizer
+        run: git rm scripts/finalize_step8_docs.py .github/workflows/step8-finalize-docs.yml
+      - name: Validate final branch
+        run: |
+          git diff --check
+          ruff check .
+          pytest
+      - name: Commit finalized Step 8 record
+        run: |
+          git add README.md SPEC.md LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: finalize Step 8 integration record'
+          git push
