@@ -2389,3 +2389,82 @@ The final implementation therefore verifies both source behavior and the generat
 **Step 2 status:** complete and ready for merge as PR #2.
 
 **Next implementation step after merge:** deterministic synthetic conformance fixture plus the first versioned result-bundle models/checksum machinery.
+
+---
+
+## Project execution log — 2026-09-14 — Step 3 synthetic conformance fixture
+
+**Status:** implementation complete; remote pre-PR validation passed on Python 3.13.
+
+### Starting state
+
+PR #2 (`feat: implement protocol schema and validation`) was merged into `main`. Step 3 therefore starts from the approved protocol semantics already represented in code.
+
+The goal of this step is deliberately narrow: create a project-owned deterministic LiDAR fixture that can exercise coordinate, timestamp, serialization, motion-distortion, and future metric logic without requiring an external real-world dataset or dataset license in routine CI.
+
+### Work completed
+
+The synthetic layer now contains:
+
+- immutable Pydantic models for fixture configuration, poses, points, scans, and the fixture manifest;
+- an exact constant-speed circular `T_W_B` trajectory;
+- a deterministic scene containing ground, parallel walls, vertical poles, and asymmetric boxes;
+- scan-start visibility and range filtering;
+- deterministic per-point acquisition-time offsets over a 360-degree scan interval;
+- optional rolling-scan motion distortion using the exact body pose at each point's acquisition time;
+- optional deterministic per-axis point noise;
+- deterministic time-distributed point subsampling;
+- a stable fixture identity derived from generator version plus canonical configuration;
+- `manifest.json`, `ground_truth.tum`, timestamped `scans/index.json`, and per-scan JSONL files;
+- `lidarperf synthetic generate`;
+- unit and CLI tests for geometry, timing, determinism, noise, distortion, file safety, and manifest semantics.
+
+### Geometry and timing semantics
+
+The fixture uses the canonical `T_W_B` convention. The trajectory is an analytic constant-speed circular arc, allowing the exact body pose to be evaluated at arbitrary point-acquisition timestamps instead of numerically integrating motion.
+
+Landmarks are selected using the scan-start pose. Acquisition offset is derived from scan-start azimuth. With motion distortion disabled, point coordinates are expressed in the scan-start body frame. With distortion enabled, the same selected landmarks are expressed in the instantaneous body frame at acquisition time. Thus distortion changes coordinates without silently changing the sampled world landmarks.
+
+The manifest records the distinction explicitly as `scan_start_body` or `acquisition_body`.
+
+### Deterministic noise design
+
+The first local draft used Python's `random.gauss`. That was replaced before publication because a cross-version bitwise fixture should not depend unnecessarily on random-library implementation details.
+
+Noise is now derived from SHA-256 keyed by `(seed, scan_index, landmark_id, axis)` and mapped through a standardized six-uniform Irwin-Hall construction. A point's noise is therefore independent of iteration order and of any global RNG stream. The manifest records this model as `hash_irwin_hall_6_v1`.
+
+### Self-review issues caught before publication
+
+1. **Scan timestamps were initially implicit.** Zero-padded filenames corresponded to trajectory rows but did not explicitly carry timestamps. **Fix:** add `scans/index.json` with scan index, filename, `timestamp_ns`, and point count.
+2. **Point-coordinate semantics were initially implicit.** Point-time offsets alone did not state whether a coordinate lived in the scan-start or acquisition-time body frame. **Fix:** add `point_coordinate_semantics` and test both cases.
+3. **An existing file used as the output path produced a low-level path error.** **Fix:** reject it deliberately with `FileExistsError` and never touch the existing path.
+
+### Cross-version golden fixture
+
+A small fixture exercising both nonzero noise and motion distortion has the whole-directory SHA-256 golden digest:
+
+```text
+84f4b8eed79a92de4c2a84df57fca13402a7d83dfa92aec4b3ceec3ed948fa0a
+```
+
+The same golden digest is asserted by CI. An intentional generator change that modifies fixture bytes must therefore be versioned rather than silently drifting.
+
+### Validation
+
+Local Python 3.13.5 validation completed with **42 passing tests**, successful `compileall`, and no Python lines above the repository's 100-character Ruff limit. The execution container remains unable to install Ruff because it has no DNS/PyPI access, so the branch was validated again on GitHub's clean Python 3.13 runner before this record was committed. Ruff and pytest both passed there.
+
+Unlike PR #2, Step 3 was batched and locally validated before its first remote publication rather than using CI as an iterative formatter/debugger.
+
+### Remote workflow mistake before validation
+
+The first one-shot pre-PR validation workflow was rejected by GitHub before any job started because I embedded a shell here-document whose body was not indented as YAML block content. **No project test or lint step ran in that failed workflow.** The code itself was not implicated.
+
+**Fix:** replace the fragile multiline YAML payload with a base64-encoded log payload, validate the workflow syntax locally, and rerun the pre-PR validation once. This failure is retained in the project record because it was a tooling mistake in how I published the log.
+
+### Scope boundary
+
+This is a conformance/CI fixture, **not a real-world ranking dataset**. Its analytic trajectory and simple geometry are designed to expose convention and pipeline bugs. No research claim about real-world odometry accuracy should be based on performance on this fixture.
+
+### Next step after merge
+
+Step 4: versioned result-bundle models, SHA-256 payload checksums, immutable bundle semantics, and `lidarperf verify`.

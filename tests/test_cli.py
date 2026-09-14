@@ -34,3 +34,43 @@ def test_protocol_validate_invalid_file(tmp_path) -> None:
     result = runner.invoke(app, ["protocol", "validate", str(path)])
     assert result.exit_code == 2
     assert "INVALID:" in result.stderr
+
+
+def test_synthetic_generate(tmp_path) -> None:
+    output = tmp_path / "synthetic"
+    result = runner.invoke(
+        app,
+        [
+            "synthetic",
+            "generate",
+            str(output),
+            "--poses",
+            "3",
+            "--max-points",
+            "8",
+            "--motion-distortion",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "GENERATED" in result.stdout
+    assert "fixture_sha256:" in result.stdout
+    assert (output / "manifest.json").is_file()
+    assert (output / "ground_truth.tum").is_file()
+    assert (output / "scans" / "index.json").is_file()
+    assert len(list((output / "scans").glob("*.jsonl"))) == 3
+
+
+def test_synthetic_generate_refuses_nonempty_directory(tmp_path) -> None:
+    output = tmp_path / "synthetic"
+    output.mkdir()
+    (output / "keep.txt").write_text("do not overwrite", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["synthetic", "generate", str(output), "--poses", "2", "--max-points", "4"],
+    )
+
+    assert result.exit_code == 2
+    assert "not empty" in result.stderr
+    assert (output / "keep.txt").read_text(encoding="utf-8") == "do not overwrite"
