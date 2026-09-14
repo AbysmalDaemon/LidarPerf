@@ -15,10 +15,50 @@ def _codes(report) -> set[str]:
     return {issue.code for issue in report.issues}
 
 
+def _replace_split_logs_with_process_log(bundle: Path, refresh_checksums) -> None:
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    inventory = set(manifest["file_inventory"])
+    inventory.remove("trials/0001/stdout.log")
+    inventory.remove("trials/0001/stderr.log")
+    inventory.add("trials/0001/process.log")
+    manifest["file_inventory"] = sorted(inventory)
+    manifest_path.write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (bundle / "trials/0001/stdout.log").unlink()
+    (bundle / "trials/0001/stderr.log").unlink()
+    (bundle / "trials/0001/process.log").write_text("combined output\n", encoding="utf-8")
+    refresh_checksums(bundle)
+
+
 def test_valid_bundle_verifies(valid_bundle: Path) -> None:
     report = verify_bundle(valid_bundle)
     assert report.status == VerificationStatus.VALID
     assert report.issues == ()
+
+
+def test_combined_process_log_bundle_verifies(valid_bundle: Path, refresh_checksums) -> None:
+    _replace_split_logs_with_process_log(valid_bundle, refresh_checksums)
+    report = verify_bundle(valid_bundle)
+    assert report.status == VerificationStatus.VALID
+    assert report.issues == ()
+
+
+def test_ambiguous_log_layout_is_rejected(valid_bundle: Path, refresh_checksums) -> None:
+    manifest_path = valid_bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["file_inventory"].append("trials/0001/process.log")
+    manifest["file_inventory"].sort()
+    manifest_path.write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (valid_bundle / "trials/0001/process.log").write_text("combined\n", encoding="utf-8")
+    refresh_checksums(valid_bundle)
+    report = verify_bundle(valid_bundle)
+    assert "TRIAL_LOG_LAYOUT_AMBIGUOUS" in _codes(report)
 
 
 def test_cli_verify_valid_bundle(valid_bundle: Path) -> None:
@@ -46,6 +86,7 @@ def test_missing_payload_is_rejected(valid_bundle: Path) -> None:
     report = verify_bundle(valid_bundle)
     assert "INVENTORY_MISSING" in _codes(report)
     assert "PAYLOAD_MISSING" in _codes(report)
+    assert "TRIAL_LOG_MISSING" in _codes(report)
 
 
 def test_config_semantic_hash_is_verified(valid_bundle: Path, refresh_checksums) -> None:
