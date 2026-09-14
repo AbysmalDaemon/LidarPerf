@@ -19,7 +19,6 @@ from lidarperf.runner import BenchmarkRunError, run_evalio_benchmark
 from lidarperf.spec.enums import MeasurementClass
 from lidarperf.trajectory import evaluate_trajectory, parse_tum
 
-
 TRAJECTORY = """0.000000000 0 0 0 0 0 0 1
 1.000000000 1 0 0 0 0 0 1
 2.000000000 1 1 0 0 0 0 1
