@@ -81,13 +81,13 @@ def main() -> None:
         pipeline=args.pipeline,
     )
     protocol = _validation_protocol(root)
-    support = _input_support(args.dataset, args.length)
+    input_support = _input_support(args.dataset, args.length)
     estimate = load_evalio_trajectory(paths.estimate, body_frame=protocol.trajectory.evaluation_frame)
     reference = load_evalio_trajectory(
         paths.ground_truth,
         body_frame=protocol.trajectory.evaluation_frame,
     )
-    evaluation = evaluate_trajectory(estimate, reference, protocol, support=support)
+    evaluation = evaluate_trajectory(estimate, reference, protocol, support=input_support)
 
     if len(estimate) < 20:
         raise RuntimeError(f"KISS produced too few poses for integration validation: {len(estimate)}")
@@ -103,6 +103,8 @@ def main() -> None:
         )
     if evaluation.ape_translation_m is None or evaluation.ape_rotation_deg is None:
         raise RuntimeError("required APE metrics were not produced")
+    if reference.start_ns is None or reference.end_ns is None:
+        raise RuntimeError("reference trajectory is unexpectedly empty")
 
     evidence = {
         "schema_version": "lidarperf.validation.evalio-kiss.v1",
@@ -114,10 +116,25 @@ def main() -> None:
         "dataset": args.dataset,
         "requested_lidar_scans": args.length,
         "input_support": {
-            "start_ns": support.start_ns,
-            "end_ns": support.end_ns,
-            "duration_ns": support.duration_ns,
+            "start_ns": input_support.start_ns,
+            "end_ns": input_support.end_ns,
+            "duration_ns": input_support.duration_ns,
             "source": "evalio dataset LiDAR timestamps",
+        },
+        "reference_support": {
+            "start_ns": reference.start_ns,
+            "end_ns": reference.end_ns,
+            "duration_ns": reference.duration_ns,
+            "source": "evalio normalized ground truth",
+        },
+        "evaluable_support": {
+            "start_ns": evaluation.association.coverage_support_start_ns,
+            "end_ns": evaluation.association.coverage_support_end_ns,
+            "duration_ns": (
+                evaluation.association.coverage_support_end_ns
+                - evaluation.association.coverage_support_start_ns
+            ),
+            "source": "intersection of declared input and reference support",
         },
         "pipeline": args.pipeline,
         "evalio_version": evalio_version(),
