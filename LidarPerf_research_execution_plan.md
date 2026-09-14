@@ -2873,3 +2873,160 @@ A methodological cross-check of existing trajectory-evaluation conventions was u
 ### Next action
 
 Open PR #7 and require the normal Python 3.11/3.12/3.13 CI matrix to pass. After merge, Step 8 is the first real external execution integration through evalio, beginning with a KISS-ICP end-to-end path.
+
+---
+
+## Project execution log — 2026-09-14 — Step 8 evalio + real KISS-ICP integration
+
+**Status:** functional integration complete on `evalio-kiss`; durable real-data evidence is committed. The final `main` pull request and its normal Python 3.11/3.12/3.13 matrix are the remaining publication gate for this step.
+
+### Goal
+
+Prove that LidarPerf can use an existing execution ecosystem rather than becoming another estimator/dataset zoo: run a real public LiDAR sequence through evalio and real KISS-ICP, parse the resulting trajectories into LidarPerf's canonical representation, evaluate them under explicit LidarPerf semantics, and retain auditable evidence without treating a GitHub-hosted runner as an authoritative performance machine.
+
+### Backend implemented
+
+Step 8 adds a thin evalio adapter rather than duplicating evalio registries or metrics. The adapter:
+
+- exposes an optional `evalio>=0.6,<0.7` dependency;
+- probes the installed evalio CLI/package capability;
+- builds shell-free `evalio run` argument vectors;
+- validates dataset/pipeline names and expected output paths;
+- parses evalio CSV trajectories while preserving nanosecond timestamps;
+- converts estimate and ground truth into LidarPerf `Trajectory` objects;
+- delegates trajectory validity, association, alignment, coverage, and metrics to LidarPerf;
+- propagates explicit benchmark input support through `EvalioBackend.evaluate()`.
+
+The integration target is evalio 0.6.1, KISS-ICP 1.3.0, and `hilti_2022/basement_2`.
+
+### Real-data semantic failure 1 — wrong coverage denominator
+
+Workflow run `34855048114` successfully installed evalio/KISS, downloaded the real Hilti sequence, processed the requested 120 LiDAR scans, and produced nonempty estimate/ground-truth CSV files. LidarPerf then failed the run with temporal coverage `0.159893`.
+
+The estimator had intentionally processed only a 120-scan prefix while evalio's `gt.csv` covered much more of the sequence. Dividing the valid prefix by the entire ground-truth file therefore made a complete requested prefix look roughly 16% complete.
+
+**Correction:** coverage cannot automatically use whatever full reference file happens to be on disk. The benchmarked sensor/input interval must be represented explicitly.
+
+### Real-data semantic failure 2 — input support is not necessarily ground-truth support
+
+The first correction introduced `EvaluationSupport` and measured the prefix against the actual first/last LiDAR timestamps. Workflow run `34856259804` again executed the real KISS path successfully but LidarPerf rejected evaluation because it required the declared input interval to lie wholly inside reference support.
+
+Real Hilti data disproved that assumption. In the successful run, the first requested LiDAR timestamp precedes the first available normalized ground-truth timestamp by **99.988 ms**.
+
+**Final semantic model:**
+
+- **input support** = sensor interval requested from the estimator;
+- **reference support** = interval where ground truth exists;
+- **evaluable support** = intersection of input and reference support.
+
+Accuracy association and coverage operate on the evaluable support. Input and reference supports remain separately recorded, so restricting metrics to the intersection cannot hide missing ground truth. No-overlap inputs are rejected.
+
+This distinction is encoded in trajectory association models/tests, propagated through the evalio backend, emitted as metric/evidence fields, and clarified in `SPEC.md` before release.
+
+### Pre-real validation findings
+
+Before spending another multi-gigabyte dataset download, the support fix was isolated behind an internal PR into `evalio-kiss` and exercised with the normal Python matrix. That process found and fixed three non-methodological test/tooling issues:
+
+1. three Ruff line-length violations in the validation script;
+2. an evalio smoke fixture that was collinear and therefore correctly underdetermined for SE(3) alignment;
+3. a rotation-zero assertion that demanded `1e-12` degree precision even though SVD-based rigid alignment produced a harmless micro-degree floating-point residue.
+
+The implementation was not weakened for those failures: the fixture became non-collinear and the numerical assertion received a realistic tolerance. The final lightweight matrix passed on Python 3.11, 3.12, and 3.13.
+
+The internal support-fix PR used pull-request number #8 with base `evalio-kiss`; therefore the final Step 8 PR to `main` will use the next available repository PR number. This is recorded to avoid later confusion with the original planning note that called the final integration PR “PR #8”.
+
+### Expensive-workflow correction
+
+The first real workflow versions ran the 6.3 GB Hilti download before repository lint/tests. Step 8 now performs cheap Ruff + pytest validation first so ordinary code failures cannot waste a large dataset transfer.
+
+The one-shot real-data workflow was designed to remove itself after success. That happened in the successful run, so the expensive Hilti download is not a permanent push-time CI job.
+
+### Successful real validation
+
+Workflow run `34860064110` completed successfully on Ubuntu 24.04 / Python 3.11.
+
+Pre-download validation:
+
+```text
+Ruff: all checks passed
+pytest: 119 passed
+```
+
+Real execution:
+
+```text
+dataset: hilti_2022/basement_2
+evalio: 0.6.1
+KISS-ICP: 1.3.0
+requested LiDAR scans: 120
+KISS processed: 120/120
+```
+
+The public dataset download was approximately 6.3 GB and took 17:07 on this hosted runner. The estimator execution itself was only a few seconds, but **no hosted-runner runtime from this workflow is an authoritative LidarPerf performance result**.
+
+The workflow produced and committed:
+
+```text
+docs/validation/step8_kiss_evalio.json
+```
+
+and then deleted `.github/workflows/step8-real-kiss.yml` as intended.
+
+### Durable evidence
+
+The committed evidence records:
+
+- validation scope `functional_integration_only`;
+- `performance_authoritative: false` and the hosted-runner reason;
+- evalio 0.6.1 and KISS-ICP 1.3.0;
+- 120 estimator poses and 689 reference poses;
+- SHA-256 fingerprints of both generated trajectory files;
+- the explicit Step 8 association override `nearest`, maximum 10 ms;
+- input, reference, and evaluable support timestamps/durations;
+- 119 matched poses and one unmatched estimate pose;
+- zero invalid estimator/reference poses;
+- evaluable temporal coverage 1.0 against a required 0.98;
+- evaluable distance coverage 1.0;
+- translation APE RMSE `0.33748229509746847 m`;
+- rotation APE RMSE `47.89751763041684 deg`;
+- unavailable 10 m/100 m RPE windows represented with pair count zero rather than fabricated zero errors.
+
+Input support is `11.899040 s`; evaluable support is `11.799052 s`. The difference is the disclosed ground-truth gap at the beginning of the requested sensor prefix.
+
+### Frame and metric interpretation
+
+Upstream evalio's Hilti adapter declares `imu_T_gt()` as identity, so normalized Hilti ground truth is already expressed for the IMU body frame. The evalio KISS adapter receives `imu_T_lidar`, stores its inverse as `lidar_T_imu`, and serializes `kiss_icp_->pose() * lidar_T_imu`. The Step 8 integration therefore treats both serialized trajectories as the same evalio IMU/body frame.
+
+The relatively large rotation APE in this short prefix is retained exactly rather than explained away. Step 8 is a functional integration validation, not a KISS accuracy publication or an accuracy-gated performance comparison. Before Hilti rotation accuracy is used for a scientific benchmark claim, the result should be investigated under a longer, protocol-selected sequence and an explicit accuracy-validity policy. This does not invalidate the Step 8 proof that the real execution and LidarPerf evaluation path function end to end.
+
+### Association decision
+
+The built-in LO reference protocol defaults to exact timestamp association. Step 8 used an explicit temporary integration-protocol copy with nearest association and a declared 10 ms maximum difference because Hilti ground truth is higher-rate than LiDAR. The override is stored in evidence and is not a hidden evaluator default. In this successful prefix, matched pose timestamps happened to have zero recorded nearest-neighbor delta.
+
+### Repository-history mistakes retained
+
+Two earlier no-op commits on `main` accidentally added and immediately removed a `.step8-placeholder` file. Public history is intentionally not rewritten to hide them. They are harmless repository-history noise and are retained here as a tooling mistake.
+
+### Step 8 conclusion
+
+LidarPerf has now proven the following real functional path:
+
+```text
+public Hilti LiDAR data
+→ evalio
+→ real KISS-ICP
+→ evalio trajectory files
+→ LidarPerf parsing
+→ structural validation
+→ explicit timestamp association
+→ explicit input/reference/evaluable support semantics
+→ rigid SE(3) alignment
+→ APE/coverage metrics
+→ durable validation evidence
+```
+
+This validates the evalio abstraction without claiming hosted-runner performance authority.
+
+### Next action
+
+Open the final `evalio-kiss -> main` integration PR, require the normal Python 3.11/3.12/3.13 Ruff + pytest matrix to pass, merge only when green, and then proceed to Phase 9: the first complete real run including controlled execution, result-bundle writing, and bundle verification.

@@ -12,6 +12,7 @@ from .alignment import apply_alignment_positions, apply_alignment_rotations, est
 from .association import associate_trajectories
 from .math import pose_matrix, quaternions_to_matrices, relative_pose, rotation_angle_rad
 from .model import (
+    EvaluationSupport,
     MetricSummary,
     RelativeErrorResult,
     Trajectory,
@@ -183,8 +184,16 @@ def evaluate_trajectory(
     estimate: Trajectory,
     reference: Trajectory,
     protocol: BenchmarkProtocol,
+    *,
+    support: EvaluationSupport | None = None,
 ) -> TrajectoryEvaluation:
-    """Validate, associate, align, and evaluate one estimate/reference pair."""
+    """Validate, associate, align, and evaluate one estimate/reference pair.
+
+    ``support`` is the benchmarked sensor/input interval. It is required for
+    prefix/segment experiments whose ground-truth file spans more data than the
+    estimator was asked to consume. Full-sequence evaluation defaults to the
+    reference trajectory support.
+    """
 
     estimate_validation = validate_trajectory(estimate)
     reference_validation = validate_trajectory(reference)
@@ -214,6 +223,7 @@ def evaluate_trajectory(
         estimate,
         reference,
         protocol.trajectory.association,
+        support=support,
     )
     alignment = estimate_alignment(
         associated.estimate,

@@ -765,6 +765,28 @@ Each run MUST report at least:
 
 ## 24.1 Coverage
 
+Coverage uses three distinct temporal supports when the benchmarked sensor interval and
+available reference trajectory are not identical:
+
+- **input support** — the sensor-time interval the estimator was asked to process;
+- **reference support** — the time interval for which ground truth exists;
+- **evaluable support** — `input support ∩ reference support`.
+
+For trajectory accuracy evaluation, temporal coverage is measured over the evaluable
+support, not over an unrelated full ground-truth file and not over sensor time for which
+no reference exists. Distance coverage is likewise measured against reference path length
+inside the evaluable support.
+
+If explicit input support is supplied and it differs from reference support, the result
+MUST disclose both intervals and the derived evaluable support. Restricting accuracy
+metrics to their intersection MUST NOT erase or disguise missing reference data outside
+that intersection. If the intersection is empty, trajectory accuracy cannot be evaluated.
+
+Estimator completion over the requested input and reference availability are separate
+facts. Input scan counts, consumed scans, emitted poses, trajectory start/end, and the
+three support intervals MUST remain available so a high accuracy-coverage value cannot be
+misread as proof that ground truth covered every requested sensor instant.
+
 The default v0.1 conformance recommendation is:
 
 ```text
@@ -775,7 +797,8 @@ This is a **default recommendation**, not a universal scientific law.
 
 A protocol MAY use another threshold, but it MUST be explicit.
 
-An estimator with lower coverage MUST NOT receive a normal accuracy/performance “pass” simply because its successful subset is easy.
+An estimator with lower evaluable coverage MUST NOT receive a normal accuracy/performance
+“pass” simply because its successful subset is easy.
 
 ---
 
