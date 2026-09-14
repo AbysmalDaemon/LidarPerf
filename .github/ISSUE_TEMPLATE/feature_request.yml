@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a new capability or protocol change
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real benchmarking problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired behavior and benchmark semantics.
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocol impact
+      description: Does this change comparability, metrics, timing boundaries, sensors, or result semantics?
