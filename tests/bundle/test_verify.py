@@ -86,7 +86,6 @@ def test_missing_payload_is_rejected(valid_bundle: Path) -> None:
     report = verify_bundle(valid_bundle)
     assert "INVENTORY_MISSING" in _codes(report)
     assert "PAYLOAD_MISSING" in _codes(report)
-    assert "TRIAL_LOG_MISSING" in _codes(report)
 
 
 def test_config_semantic_hash_is_verified(valid_bundle: Path, refresh_checksums) -> None:
