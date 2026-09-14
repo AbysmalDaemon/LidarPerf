@@ -1,0 +1,24 @@
+name: Repair Step 6 SPEC
+
+on:
+  push:
+    branches: [benchexec-backend]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair and hash-check SPEC.md
+        run: python scripts/repair_spec_step6.py
+      - name: Commit repaired specification and remove helper files
+        run: |
+          git rm scripts/repair_spec_step6.py .github/workflows/repair-spec-step6.yml
+          git add SPEC.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: repair SPEC integrity and log layout'
+          git push
