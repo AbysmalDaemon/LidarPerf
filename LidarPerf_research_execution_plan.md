@@ -2379,3 +2379,13 @@ The schema is regenerated **from the committed Pydantic models on GitHub's runne
 A related reproducibility issue was identified at the same time: exact generated-schema equality can drift when the Pydantic generator version changes. The runtime dependency remains compatible with a wider Pydantic 2.x range, but the development/schema-generation environment is now pinned to Pydantic 2.13.5. Ruff and pytest are also pinned for deterministic project CI. Upgrading these tools later must be an explicit maintenance change rather than an accidental change caused by a new package release.
 
 **Learning:** generated artifacts must remain generated artifacts, and the generator toolchain is part of their provenance. Never hand-maintain or manually reconstruct a checked-in schema whose exact equality to source models is itself an invariant.
+
+### Step 2 final remote verification
+
+The protocol/schema implementation was revalidated on a clean GitHub Actions matrix for Python 3.11, 3.12, and 3.13 after regenerating the checked-in JSON Schema from the pinned Pydantic 2.13.5 development environment. Ruff passed and all 28 tests passed on each supported Python version.
+
+The final implementation therefore verifies both source behavior and the generated-schema invariant in the same pinned toolchain used by CI.
+
+**Step 2 status:** complete and ready for merge as PR #2.
+
+**Next implementation step after merge:** deterministic synthetic conformance fixture plus the first versioned result-bundle models/checksum machinery.
