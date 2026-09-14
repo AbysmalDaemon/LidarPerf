@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, and result-bundle integrity layers are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, and host-provenance layers are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -31,7 +31,8 @@ The package currently includes:
 - a deterministic synthetic LiDAR conformance fixture with exact `T_W_B` ground truth;
 - optional deterministic point noise and rolling-scan motion distortion;
 - bitwise fixture golden tests across the supported Python CI matrix;
-- versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification.
+- versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification;
+- read-only host fingerprinting and `lidarperf doctor` benchmark-readiness diagnostics.
 
 Estimator execution and real trajectory metrics are **not implemented yet**.
 
@@ -51,11 +52,18 @@ Available now:
 
 ```bash
 lidarperf --version
+lidarperf doctor
+lidarperf doctor --json
+lidarperf doctor --data-path /path/to/dataset
 lidarperf protocol validate protocols/lo/se3_v1.yaml
 lidarperf protocol validate protocols/lio/se3_v1.yaml
 lidarperf synthetic generate ./synthetic-fixture --poses 240
 lidarperf verify ./result.lperf
 ```
+
+`doctor` performs a read-only host probe and reports benchmark-relevant operating-system, CPU/topology, affinity, governor, memory/swap, cgroup, storage, NVIDIA/CUDA, system-load, power, and BenchExec capability metadata. It does not silently tune or modify the machine. `--json` emits the complete versioned `lidarperf.doctor.v1` report. Passing `--data-path` also classifies the dataset filesystem and warns about network storage.
+
+The host fingerprint intentionally excludes usernames, hostnames, MAC addresses, serial numbers, GPU UUIDs, and other unnecessary machine identifiers. Dynamic conditions such as current load, swap use, governor, and CPU affinity are recorded in the snapshot but excluded from the stable `host_sha256` identity.
 
 `protocol validate` parses YAML/JSON with the v0.1 Pydantic schema, rejects unknown or contradictory fields, and prints the canonical SHA-256 protocol fingerprint.
 
