@@ -69,6 +69,14 @@ def _conformance_status(
     return ConformanceStatus.NON_CONFORMANT
 
 
+def _required_trial_count(protocol, measurement_class: MeasurementClass) -> int:
+    if measurement_class == MeasurementClass.EXPLORATORY:
+        return protocol.repetition.exploratory_min_trials
+    if measurement_class == MeasurementClass.CONTROLLED:
+        return protocol.repetition.controlled_min_trials
+    return protocol.repetition.publication_min_trials
+
+
 def run_evalio_benchmark(
     *,
     protocol_path: str | Path,
@@ -81,7 +89,7 @@ def run_evalio_benchmark(
     method_version: str | None,
     bundle_dir: str | Path,
     workspace: str | Path,
-    measurement_class: MeasurementClass = MeasurementClass.CONTROLLED,
+    measurement_class: MeasurementClass = MeasurementClass.EXPLORATORY,
     resource_limits: ResourceLimits | None = None,
     method_source: MethodSourceRecord | None = None,
     host_snapshot: HostSnapshot | None = None,
@@ -90,28 +98,34 @@ def run_evalio_benchmark(
 ) -> tuple[ResultManifest, VerificationReport]:
     """Run one evalio experiment through BenchExec and emit a verified `.lperf` bundle.
 
-    This is deliberately a single-trial primitive. Repetition and aggregate statistics
-    belong to the next execution phase rather than being hidden inside this function.
+    This is deliberately a single-trial primitive. Protocol repetition requirements are
+    enforced here, so a one-trial artifact cannot falsely claim controlled or publication
+    measurement strength when the selected protocol requires more trials.
     """
 
     protocol_source = Path(protocol_path)
     resolved = load_protocol(protocol_source)
     if dataset_record.id != dataset:
         raise ValueError("dataset_record.id must match the evalio dataset name")
-    if measurement_class == MeasurementClass.PUBLICATION:
+    if measurement_class not in resolved.document.measurement.allowed_classes:
         raise BenchmarkRunError(
-            "publication-class evidence requires repeated trials; use controlled for one trial"
+            f"protocol does not allow measurement class {measurement_class.value!r}"
+        )
+    required_trials = _required_trial_count(resolved.document, measurement_class)
+    if required_trials > 1:
+        raise BenchmarkRunError(
+            f"{measurement_class.value}-class evidence requires at least {required_trials} "
+            "measured trials under this protocol; the single-trial runner cannot claim it"
         )
 
     evalio = evalio_backend or EvalioBackend()
     executor = execution_backend or BenchExecBackend()
-    if measurement_class == MeasurementClass.CONTROLLED:
-        capability = executor.probe_capability()
-        if not capability.controlled_ready:
-            raise BenchmarkRunError(
-                "controlled BenchExec execution is unavailable: "
-                f"{capability.reason or 'unknown capability failure'}"
-            )
+    capability = executor.probe_capability()
+    if not capability.controlled_ready:
+        raise BenchmarkRunError(
+            "BenchExec process-tree accounting is unavailable: "
+            f"{capability.reason or 'unknown capability failure'}"
+        )
 
     working_root = Path(workspace)
     working_root.mkdir(parents=True, exist_ok=True)
