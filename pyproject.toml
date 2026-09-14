@@ -39,6 +39,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+benchmark = [
+  "benchexec>=3.31,<4",
+]
 dev = [
   # Pin schema/lint/test tooling so generated artifacts and CI do not drift silently.
   "pydantic==2.13.5",
