@@ -2757,3 +2757,35 @@ The focused tests cover:
 ### Next action
 
 Update public documentation, open PR #5, and require the normal Python 3.11/3.12/3.13 Ruff + pytest matrix to pass before merge. After Step 5 merges, Step 6 is the BenchExec execution backend and controlled process resource measurement.
+
+
+---
+
+## Project execution log - 2026-09-14 - Step 6 BenchExec execution backend
+
+**Status:** implementation complete on `benchexec-backend`; pre-PR validation passed. PR CI is the remaining merge gate.
+
+### Implemented
+
+Step 6 adds the controlled Linux process-execution layer using BenchExec/`runexec` rather than a custom monitor. It includes versioned command/resource/measurement/result/capability models, direct argv execution, wall and CPU time, peak-memory accounting, CPU/wall/memory/core/NUMA limits, return/signal/timeout/termination normalization, backend-version capture, compact diagnostics, and an active `probe_capability()` readiness check. The backend defaults to `--no-container`; software containers remain a separate Docker backend.
+
+BenchExec combines command stdout and stderr in `runexec --output`. The result-bundle contract, SPEC, verifier, tests, and README now preserve this honestly: a trial has either `process.log` or a genuine `stdout.log` + `stderr.log` pair, never both.
+
+The portable `benchmark` extra uses `benchexec>=3.31,<4`. Controlled hosts may add BenchExec systemd integration or run in a delegated systemd scope as documented.
+
+### Validation
+
+Final pre-PR validation on Ubuntu 24.04 / Python 3.13: `runexec 3.35` smoke PASS; Ruff PASS; pytest PASS (`87 passed`). The PR Python 3.11/3.12/3.13 matrix is the authoritative cross-version gate.
+
+### Errors and learnings
+
+1. Real `runexec` on GitHub-hosted CI failed because delegated cgroups are unavailable. This is an environment capability result, not a product failure; an active readiness probe was added.
+2. Forcing `benchexec[systemd]` caused a `pystemd` build failure due missing `libsystemd.pc`. The dependency was returned to portable BenchExec and host prerequisites were documented.
+3. The original split stdout/stderr bundle contract did not match BenchExec reality. It was changed to support `process.log` without fabricating stream separation.
+4. Old transfer corruption was found in remote `SPEC.md`. Multiple hash-driven repair attempts were too brittle and generated unnecessary failed CI. Semantic invariant repair succeeded. Learning: validate transferred artifacts immediately and avoid whole-file hashes as the sole repair criterion when intended semantic changes are known.
+5. One verifier test over-specified `TRIAL_LOG_MISSING`; the more precise inventory/checksum errors were retained.
+6. Two temporary Step 6 finalizer attempts failed (invalid YAML indentation, then a corrupted copied base64 payload). These were workflow/tooling mistakes, not product-code failures. This entry records them explicitly.
+
+### Next
+
+Open PR #6, pass the normal Python 3.11/3.12/3.13 CI matrix, merge, then begin Step 7: trajectory representation and structural validation.
