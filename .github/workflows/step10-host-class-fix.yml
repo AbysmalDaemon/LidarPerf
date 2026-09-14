@@ -21,6 +21,11 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Apply Step 10 semantic patch
         run: python scripts/step10_finish_tmp_fix.py
+      - name: Remove patch scaffolding
+        run: |
+          python -c 'from pathlib import Path; p=Path("src/lidarperf/bundle/verify.py"); t=p.read_text(); old="            \"controlled/publication evidence requires a stable self-hosted or otherwise controlled host declaration\","; new="            \"controlled/publication evidence requires a stable self-hosted or otherwise \"\n            \"controlled host declaration\","; assert old in t; p.write_text(t.replace(old, new, 1))'
+          rm .github/workflows/step10-host-class-fix.yml
+          rm scripts/step10_finish_tmp.py scripts/step10_finish_tmp_fix.py
       - name: Format and validate
         run: |
           ruff format src/lidarperf/runset.py src/lidarperf/bundle/verify.py tests/test_runset.py scripts/run_step10_real.py
@@ -30,7 +35,6 @@ jobs:
           lidarperf verify docs/validation/step10_kiss_hilti_repeated.lperf
       - name: Commit final Step 10 semantics
         run: |
-          git rm .github/workflows/step10-host-class-fix.yml scripts/step10_finish_tmp.py scripts/step10_finish_tmp_fix.py
           git add -A
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
