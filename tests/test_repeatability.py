@@ -56,6 +56,8 @@ def test_trajectory_repeatability_is_all_pairwise_without_hidden_alignment() -> 
 
 
 def test_bundle_serialization_is_the_repeatability_authority() -> None:
+    # Aggregate repeatability must be reproducible from the checksummed trajectory payloads,
+    # not from higher-precision arrays that disappear when the bundle is serialized.
     first = _trajectory()
     second = _trajectory(4.0e-13)
     raw = trajectory_repeatability([first, second])
