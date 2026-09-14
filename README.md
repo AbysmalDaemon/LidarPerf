@@ -33,7 +33,7 @@ The package currently includes:
 - bitwise fixture golden tests across the supported Python CI matrix;
 - versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification;
 - read-only host fingerprinting and `lidarperf doctor` benchmark-readiness diagnostics;
-- a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, and resource-limit termination semantics.
+- a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe.
 
 Real estimator/dataset orchestration and trajectory metrics are **not implemented yet**.
 
@@ -70,7 +70,7 @@ The host fingerprint intentionally excludes usernames, hostnames, MAC addresses,
 
 `synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains exact `T_W_B` TUM ground truth, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
 
-`verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, trial-count consistency, and SHA-256 payload checksums. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
+`verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, trial-count consistency, execution-log layout, and SHA-256 payload checksums. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
 
 ### BenchExec backend
 
@@ -80,9 +80,13 @@ Authoritative v0.1 process-level measurement uses BenchExec's `runexec` integrat
 python -m pip install -e '.[benchmark]'
 ```
 
+The `benchmark` extra intentionally installs the portable BenchExec Python package only. On cgroups-v2 hosts where BenchExec needs to create its own delegated scope, use the distribution's recommended BenchExec package or install the optional systemd integration with the required `libsystemd` development files available. Running BenchExec inside an already delegated `systemd-run --user --scope ... -p Delegate=yes` scope is another supported host setup.
+
 The backend executes argument vectors directly without a shell and can delegate CPU-time, wall-time, memory, CPU-core, and NUMA-node limits to `runexec`. It normalizes `walltime`, `cputime`, peak memory, child return/signal information, and BenchExec termination reasons into versioned LidarPerf execution records.
 
-BenchExec writes command stdout and stderr into one output file; LidarPerf therefore names this artifact a **combined output log** at the backend layer rather than pretending the streams were measured separately. The backend disables BenchExec namespace/container mode by default so estimator output paths retain ordinary host filesystem semantics; software containerization remains a separate planned Docker backend.
+`BenchExecBackend.probe_capability()` performs an actual tiny `runexec` execution instead of treating “binary exists” as proof of benchmark readiness. A host is controlled-ready only if process-tree timing and memory accounting succeed. This intentionally rejects ordinary GitHub-hosted runners whose cgroups are not delegated for BenchExec accounting.
+
+BenchExec writes command stdout and stderr into one output file; LidarPerf therefore names this artifact a **combined output log** at the backend layer rather than pretending the streams were measured separately. Result bundles accept either one `process.log` or a genuine `stdout.log` + `stderr.log` pair, never both. The backend disables BenchExec namespace/container mode by default so estimator output paths retain ordinary host filesystem semantics; software containerization remains a separate planned Docker backend.
 
 For example, to exercise point-time semantics and deskew-related tests:
 
