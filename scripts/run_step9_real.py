@@ -172,6 +172,13 @@ def main() -> None:
         workspace=args.workspace / "run",
         measurement_class=MeasurementClass.EXPLORATORY,
         host_snapshot=host,
+        execution_metadata={
+            "performance_authoritative": False,
+            "performance_authority_reason": (
+                "GitHub-hosted runner; BenchExec accounting is integration evidence, "
+                "not a stable performance baseline"
+            ),
+        },
     )
 
     summary = {
