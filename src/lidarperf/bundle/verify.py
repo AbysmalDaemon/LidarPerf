@@ -41,8 +41,6 @@ _REQUIRED_TRIAL_FILES = (
     "metrics.json",
     "resources.json",
     "trajectory.tum",
-    "stdout.log",
-    "stderr.log",
 )
 
 
@@ -203,6 +201,34 @@ def _fingerprint_config(path: Path, collector: _Collector) -> str | None:
         return None
 
 
+def _verify_trial_log_layout(
+    directory: str,
+    declared_payloads: set[str],
+    collector: _Collector,
+) -> None:
+    stdout_path = f"{directory}/stdout.log"
+    stderr_path = f"{directory}/stderr.log"
+    process_path = f"{directory}/process.log"
+    has_stdout = stdout_path in declared_payloads
+    has_stderr = stderr_path in declared_payloads
+    has_process = process_path in declared_payloads
+
+    if has_process and (has_stdout or has_stderr):
+        collector.error(
+            "TRIAL_LOG_LAYOUT_AMBIGUOUS",
+            f"{directory} declares process.log together with separate stdout/stderr logs",
+        )
+        return
+    if has_process:
+        return
+    if has_stdout and has_stderr:
+        return
+    collector.error(
+        "TRIAL_LOG_MISSING",
+        f"{directory} must contain process.log or both stdout.log and stderr.log",
+    )
+
+
 def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
     """Verify a result bundle's schema, provenance links, inventory, and SHA-256 integrity."""
 
@@ -328,6 +354,7 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
                     "TRIAL_FILE_MISSING",
                     f"required trial payload missing: {relative_path}",
                 )
+        _verify_trial_log_layout(directory, declared_payloads, collector)
 
         trial = _load_json(root / directory / "trial.json", TrialRecord, collector, "TRIAL_INVALID")
         _load_json(root / directory / "metrics.json", MetricsRecord, collector, "METRICS_INVALID")
