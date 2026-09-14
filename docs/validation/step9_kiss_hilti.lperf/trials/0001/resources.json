@@ -1,0 +1,13 @@
+{
+  "schema_version": "lidarperf.resources.v1",
+  "values": {
+    "backend": "benchexec-runexec",
+    "backend_version": "runexec 3.35",
+    "cpu_core_equivalents": 1.242331753326377,
+    "cpu_time_s": 4.458963,
+    "peak_memory_bytes": 130203648,
+    "termination_reason": null,
+    "timed_out": false,
+    "wall_time_s": 3.5891886269999986
+  }
+}

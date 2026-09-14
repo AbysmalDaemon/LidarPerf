@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, and first real evalio/KISS-ICP integration layers are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, and the first complete verified real `.lperf` artifact path are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -35,9 +35,12 @@ The package currently includes:
 - read-only host fingerprinting and `lidarperf doctor` benchmark-readiness diagnostics;
 - a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe;
 - canonical trajectory parsing/validation, explicit timestamp association, rigid SE(3) alignment, APE, distance-window relative-pose errors, and coverage accounting;
-- a thin evalio execution adapter, validated with real KISS-ICP 1.3.0 on the public Hilti 2022 `basement_2` sequence.
+- a thin evalio execution adapter, validated with real KISS-ICP 1.3.0 on the public Hilti 2022 `basement_2` sequence;
+- a single-trial orchestration path that connects evalio execution, BenchExec accounting, LidarPerf trajectory evaluation, provenance capture, immutable bundle writing, and independent bundle verification.
 
-A real estimator/dataset path has now been functionally validated: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → LidarPerf trajectory validation/evaluation. The durable evidence is in `docs/validation/step8_kiss_evalio.json`. GitHub-hosted runner timing from this validation is explicitly non-authoritative; controlled performance claims still require the BenchExec/self-hosted path.
+Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
+
+The committed Step 9 result is intentionally `exploratory`: it contains one measured trial, while the approved protocol requires at least five trials for `controlled` evidence and ten for `publication`. The verifier enforces that measurement-strength rule. BenchExec resource accounting in the real bundle is genuine, but the recorded wall/CPU/memory values are explicitly non-authoritative because the run used a GitHub-hosted VM. Step 10 will add repeated-run execution and legitimately controlled measurement bundles.
 
 ## Planned CLI
 
@@ -72,7 +75,7 @@ The host fingerprint intentionally excludes usernames, hostnames, MAC addresses,
 
 `synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains exact `T_W_B` TUM ground truth, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
 
-`verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, trial-count consistency, execution-log layout, and SHA-256 payload checksums. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
+`verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, execution-log layout, SHA-256 payload checksums, trial-count consistency, and the minimum trial count required by the declared measurement class. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
 
 ### evalio backend
 
@@ -89,8 +92,7 @@ starts about 100 ms before Hilti ground truth, so LidarPerf records input suppor
 reference support, and their evaluable intersection separately rather than silently
 penalizing the prefix or inventing unavailable ground truth.
 
-The committed Step 8 evidence is a functional-integration record, not a performance
-benchmark or a publication-quality KISS accuracy claim.
+The Step 8 JSON remains a functional-integration record. Step 9 reuses the same real path inside the complete bundle pipeline and preserves the raw evalio estimate/ground-truth CSVs as checksummed bundle artifacts. Neither result is a publication-quality KISS accuracy claim; the short-prefix rotation APE remains an explicit scientific caveat.
 
 ### BenchExec backend
 
@@ -104,7 +106,7 @@ The `benchmark` extra intentionally installs the portable BenchExec Python packa
 
 The backend executes argument vectors directly without a shell and can delegate CPU-time, wall-time, memory, CPU-core, and NUMA-node limits to `runexec`. It normalizes `walltime`, `cputime`, peak memory, child return/signal information, and BenchExec termination reasons into versioned LidarPerf execution records.
 
-`BenchExecBackend.probe_capability()` performs an actual tiny `runexec` execution instead of treating “binary exists” as proof of benchmark readiness. A host is controlled-ready only if process-tree timing and memory accounting succeed. This intentionally rejects ordinary GitHub-hosted runners whose cgroups are not delegated for BenchExec accounting.
+`BenchExecBackend.probe_capability()` performs an actual tiny `runexec` execution instead of treating “binary exists” as proof of benchmark readiness. A host is controlled-ready only if process-tree timing and memory accounting succeed. Ordinary GitHub-hosted jobs do not start with the cgroup delegation BenchExec needs; the Step 9 validation workflow proved that a deliberately delegated transient systemd scope can supply working accounting there. Hosted-runner measurements are still marked non-authoritative because accounting capability does not make ephemeral cloud hardware a stable performance baseline.
 
 BenchExec writes command stdout and stderr into one output file; LidarPerf therefore names this artifact a **combined output log** at the backend layer rather than pretending the streams were measured separately. Result bundles accept either one `process.log` or a genuine `stdout.log` + `stderr.log` pair, never both. The backend disables BenchExec namespace/container mode by default so estimator output paths retain ordinary host filesystem semantics; software containerization remains a separate planned Docker backend.
 
