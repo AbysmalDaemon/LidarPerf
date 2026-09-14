@@ -1,0 +1,97 @@
+spec_version: 0.1.0
+protocol:
+  id: lidarperf/lo-se3-hilti-step10
+  version: 1
+track: lo
+sensors:
+  required:
+  - lidar
+  optional: []
+  forbidden:
+  - imu
+  - camera
+  - wheel_odometry
+  - gnss
+  - magnetometer
+  - external_localization
+  - prebuilt_map
+  - ground_truth
+  - precomputed_motion
+estimator_semantics:
+  allowed_modes:
+  - online_causal
+  - online_fixed_lag
+  max_fixed_lag_seconds: 1.0
+trajectory:
+  pose:
+    transform: T_W_B
+    handedness: right
+    translation_unit: metre
+    quaternion_order: xyzw
+    timestamp_unit: int64_ns
+  evaluation_frame: body
+  association:
+    mode: nearest
+    max_time_delta_ns: 10000000
+  alignment: se3
+  scale_correction: false
+  ape_translation: true
+  ape_rotation: true
+  relative_error_windows:
+  - distance_m: 10.0
+    pairing: all_starts_nearest_reference_distance
+    relative_tolerance: 0.1
+  - distance_m: 100.0
+    pairing: all_starts_nearest_reference_distance
+    relative_tolerance: 0.1
+preprocessing:
+  coordinate_transform:
+    owner: algorithm
+  motion_compensation:
+    input_state: raw
+    performed_by: algorithm
+    motion_source: constant_velocity
+  voxel_downsample:
+    owner: algorithm
+  crop:
+    owner: none
+  range_filter:
+    owner: algorithm
+  outlier_filter:
+    owner: none
+  ground_removal:
+    owner: none
+  intensity_filter:
+    owner: none
+  timestamp_reconstruction:
+    owner: none
+  point_reordering:
+    owner: none
+  duplicate_removal:
+    owner: none
+timing:
+  scope: end_to_end
+  clock: monotonic
+validity:
+  temporal_coverage_min: 0.98
+  finite_poses_required: true
+  successful_process_exit_required: true
+repetition:
+  exploratory_min_trials: 1
+  controlled_min_trials: 5
+  publication_min_trials: 10
+  warmup_trials: 1
+measurement:
+  cpu_authoritative: true
+  gpu_authoritative: false
+  allowed_classes:
+  - exploratory
+  - controlled
+  - publication
+  cache_policy: warm
+tuning:
+  allowed_classes:
+  - frozen
+  - dataset
+  - sequence
+  preferred_class: frozen

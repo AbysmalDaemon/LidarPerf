@@ -1,0 +1,25 @@
+{
+  "content_sha256": "dc43d3e3e1345369ff73fec2b92d2cd5195a8e044770545abe8bdc4a0ccd198e",
+  "fingerprint_class": "exact",
+  "ground_truth_sha256": "dec7b20cc11002482ccb416a6e1a1c410d385b843504d3aedf7b5956746af1b6",
+  "id": "hilti_2022/basement_2",
+  "manifest_sha256": "dc43d3e3e1345369ff73fec2b92d2cd5195a8e044770545abe8bdc4a0ccd198e",
+  "metadata": {
+    "files": [
+      {
+        "path": "exp14_basement_2.bag",
+        "sha256": "18eea013076b8263ababf4f36eb68d331564a0a493262b006dc0dddc2aa85b82",
+        "size_bytes": 6260771085
+      },
+      {
+        "path": "exp14_basement_2_imu.txt",
+        "sha256": "dec7b20cc11002482ccb416a6e1a1c410d385b843504d3aedf7b5956746af1b6",
+        "size_bytes": 78222
+      }
+    ],
+    "fingerprint_algorithm": "sha256-canonical-file-manifest-v1"
+  },
+  "provider": "hilti_2022",
+  "schema_version": "lidarperf.dataset.v1",
+  "sequence": "basement_2"
+}

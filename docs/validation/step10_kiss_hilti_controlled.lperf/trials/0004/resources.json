@@ -1,0 +1,25 @@
+{
+  "schema_version": "lidarperf.resources.v1",
+  "values": {
+    "backend": "benchexec-runexec",
+    "backend_version": "runexec 3.35",
+    "command_argv": [
+      "evalio",
+      "run",
+      "-o",
+      ".step10_work/run/trials/0004/evalio",
+      "-d",
+      "hilti_2022/basement_2",
+      "-p",
+      "kiss",
+      "-l",
+      "120"
+    ],
+    "cpu_core_equivalents": 1.2486952845311414,
+    "cpu_time_s": 4.388006,
+    "peak_memory_bytes": 128905216,
+    "termination_reason": null,
+    "timed_out": false,
+    "wall_time_s": 3.5140726919999565
+  }
+}
