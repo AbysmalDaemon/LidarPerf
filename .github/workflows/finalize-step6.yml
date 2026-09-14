@@ -1,0 +1,97 @@
+name: Finalize Step 6 log
+
+on:
+  push:
+    branches: [benchexec-backend]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append Step 6 engineering log
+        run: |
+          cat <<'EOF' >> LidarPerf_research_execution_plan.md
+
+---
+
+## Project execution log — 2026-09-14 — Step 6 BenchExec execution backend
+
+**Status:** implementation complete on `benchexec-backend`; pre-PR validation passed. PR review and the repository's normal Python 3.11/3.12/3.13 CI matrix are the remaining merge gates.
+
+### Goal
+
+Implement the controlled Linux process-execution layer without writing a custom process monitor. LidarPerf delegates process-tree timing and resource accounting to BenchExec/`runexec`, then normalizes the results into stable LidarPerf records.
+
+### Work completed
+
+Step 6 now provides:
+
+- `CommandSpec`, `ResourceLimits`, `ExecutionMeasurements`, `CommandExecutionResult`, and `BenchExecCapability` versioned models;
+- direct argv execution through `runexec` without shell interpolation;
+- process-tree wall-time and CPU-time capture;
+- peak-memory capture when BenchExec exposes memory accounting;
+- CPU-time, wall-time, memory, CPU-core, and NUMA-node limits;
+- child return-value, signal, timeout, and BenchExec termination-reason normalization;
+- explicit refusal to overwrite an existing process-output log;
+- backend-version capture;
+- compact diagnostics when `runexec` cannot provide required measurements;
+- an active `probe_capability()` check that performs a tiny real execution instead of assuming that an installed binary implies controlled-benchmark readiness;
+- an optional `benchmark` dependency group using BenchExec 3.x;
+- verifier support for either a combined `process.log` or a genuine `stdout.log` + `stderr.log` pair;
+- SPEC and README documentation for the execution-log contract and controlled-host requirements.
+
+The backend defaults to `--no-container`. BenchExec is being used here for process accounting and resource control; software-container semantics remain a separate planned Docker backend.
+
+### Important design decision: combined process logs
+
+`runexec --output` combines the benchmarked command's stdout and stderr. LidarPerf must not falsely relabel that stream as stdout or fabricate an empty stderr file. The result-bundle contract therefore now accepts exactly one of:
+
+- `process.log`; or
+- both `stdout.log` and `stderr.log`.
+
+Declaring both layouts is invalid.
+
+### Controlled-readiness semantics
+
+Finding `runexec` on `PATH` is not sufficient evidence that a host can produce controlled measurements. `BenchExecBackend.probe_capability()` runs a tiny process and requires wall time, CPU time, and process-tree memory accounting before reporting `controlled_ready=true`.
+
+This matters because ordinary GitHub-hosted runners currently expose the BenchExec executable but do not grant the delegated cgroups required for authoritative CPU/memory accounting. Such runners remain useful for package, parser, and synthetic tests, but not for benchmark-grade runtime claims.
+
+### Dependency decision
+
+The portable `benchmark` extra installs `benchexec>=3.31,<4` rather than forcing `benchexec[systemd]`. The latter pulls `pystemd`, whose source build requires `libsystemd` development metadata on systems without a compatible wheel. Controlled benchmark hosts should instead use their distribution's recommended BenchExec setup, install the optional systemd integration with its system prerequisites, or enter an explicitly delegated systemd scope.
+
+### Validation
+
+The final temporary pre-PR validation on Ubuntu 24.04 / Python 3.13 completed successfully with:
+
+- BenchExec package smoke: PASS (`runexec 3.35`)
+- Ruff: PASS
+- pytest: PASS (`87 passed`)
+
+The repository's normal pull-request matrix remains the authoritative cross-version gate for Python 3.11, 3.12, and 3.13.
+
+### Errors, failed approaches, and learnings
+
+1. **Real `runexec` on a GitHub-hosted runner failed because delegated cgroups were unavailable.** This was initially treated as a smoke-test failure. It is actually an environment-capability result. Corrective action: keep hosted CI for unit/package tests and add an explicit active capability probe for controlled hosts.
+2. **The benchmark extra was temporarily changed to `benchexec[systemd]`.** On the hosted runner, `pystemd` attempted a source build and failed because `libsystemd.pc` was unavailable. Corrective action: return the package extra to portable BenchExec and document systemd integration as a host-setup concern rather than an unconditional Python dependency.
+3. **The original result-bundle schema required separate stdout/stderr logs.** BenchExec's real API exposes one combined output file. Corrective action: amend the specification and verifier to preserve the actual measurement semantics with `process.log` instead of manufacturing false stream separation.
+4. **Old transfer corruption was discovered in the remotely published `SPEC.md`.** Several Markdown fences/words had been damaged during an earlier file-transfer path. Multiple hash-driven repair attempts were too brittle and produced unnecessary failed CI runs. Corrective action: use semantic invariant checks for the known corruption and the Step 6 amendment, repair the document successfully, and remove the temporary repair workflow. Learning: verify large transferred artifacts immediately after publication and do not use a whole-file hash as the only repair criterion when the intended semantic changes are known.
+5. **One new verifier test over-specified an error code.** Deleting a physically present-but-declared log correctly produced `INVENTORY_MISSING` and `PAYLOAD_MISSING`; the test additionally demanded `TRIAL_LOG_MISSING`, even though log-layout validation intentionally operates on the declared artifact shape. Corrective action: retain the precise inventory/checksum errors and keep layout validation for mutually exclusive/declared log layouts.
+
+### Next action
+
+Open PR #6 for Step 6, require the normal repository CI matrix to pass, review the diff once, and merge. After merge, Step 7 is trajectory representation and structural validation.
+EOF
+      - name: Remove temporary Step 6 workflows and commit
+        run: |
+          git rm .github/workflows/finalize-step6.yml .github/workflows/pre-step6.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: finalize Step 6 engineering log'
+          git push
