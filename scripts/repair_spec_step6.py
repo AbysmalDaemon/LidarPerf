@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 
 TARGET_SHA256 = "43e4b0360689f27380c57454e5372f4ea0b0854bd03ba3abec068bb90662ce7a"
@@ -10,14 +11,20 @@ TARGET_SHA256 = "43e4b0360689f27380c57454e5372f4ea0b0854bd03ba3abec068bb90662ce7
 path = Path("SPEC.md")
 text = path.read_text(encoding="utf-8")
 
+regex_repairs = (
+    (r"(  fixed_lag_seconds: 1\.0)\nb`{2,3}\n", r"\1\n```\n"),
+    (r"(  temporal_mode: offline_noncausal)\nb`{2,3}\n", r"\1\n```\n"),
+)
+for pattern, replacement in regex_repairs:
+    text, count = re.subn(pattern, replacement, text, count=1)
+    if count != 1:
+        raise RuntimeError(f"expected exactly one match for transfer-corruption pattern {pattern!r}")
+
 replacements = (
-    ("  fixed_lag_seconds: 1.0\nb```", "  fixed_lag_seconds: 1.0\n```"),
-    ("  temporal_mode: offline_noncausal\nb```", "  temporal_mode: offline_noncausal\n```"),
     ("## 9.2 `online_fixed_lagg\n", "## 9.2 `online_fixed_lag`\n"),
     ("body frame bB`", "body frame `B`"),
     ("- repeatition policy", "- repetition policy"),
 )
-
 for old, new in replacements:
     count = text.count(old)
     if count != 1:
