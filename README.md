@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, and controlled process-execution layers are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, and first real evalio/KISS-ICP integration layers are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -34,9 +34,10 @@ The package currently includes:
 - versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification;
 - read-only host fingerprinting and `lidarperf doctor` benchmark-readiness diagnostics;
 - a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe;
-- canonical trajectory parsing/validation, explicit timestamp association, rigid SE(3) alignment, APE, distance-window relative-pose errors, and coverage accounting.
+- canonical trajectory parsing/validation, explicit timestamp association, rigid SE(3) alignment, APE, distance-window relative-pose errors, and coverage accounting;
+- a thin evalio execution adapter, validated with real KISS-ICP 1.3.0 on the public Hilti 2022 `basement_2` sequence.
 
-Real estimator/dataset orchestration is **not implemented yet**.
+A real estimator/dataset path has now been functionally validated: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → LidarPerf trajectory validation/evaluation. The durable evidence is in `docs/validation/step8_kiss_evalio.json`. GitHub-hosted runner timing from this validation is explicitly non-authoritative; controlled performance claims still require the BenchExec/self-hosted path.
 
 ## Planned CLI
 
@@ -72,6 +73,24 @@ The host fingerprint intentionally excludes usernames, hostnames, MAC addresses,
 `synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains exact `T_W_B` TUM ground truth, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
 
 `verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, trial-count consistency, execution-log layout, and SHA-256 payload checksums. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
+
+### evalio backend
+
+Install the optional evalio integration with:
+
+```bash
+python -m pip install -e '.[evalio]'
+```
+
+The adapter delegates dataset loading and estimator execution to evalio while keeping
+LidarPerf authoritative for protocol-scoped trajectory validation and metrics. Step 8
+validated `hilti_2022/basement_2` with KISS-ICP for a 120-scan prefix. The input interval
+starts about 100 ms before Hilti ground truth, so LidarPerf records input support,
+reference support, and their evaluable intersection separately rather than silently
+penalizing the prefix or inventing unavailable ground truth.
+
+The committed Step 8 evidence is a functional-integration record, not a performance
+benchmark or a publication-quality KISS accuracy claim.
 
 ### BenchExec backend
 
