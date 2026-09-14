@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from ._version import __version__
 from .bundle import VerificationStatus, verify_bundle
+from .host import DoctorSeverity, assess_host, probe_host
 from .spec import ProtocolLoadError, load_protocol
 from .synthetic import SyntheticFixtureConfig, write_fixture
 
@@ -44,6 +47,56 @@ def main(
     """Run LidarPerf."""
     if ctx.invoked_subcommand is None and not version:
         typer.echo(ctx.get_help())
+
+
+@app.command("doctor")
+def doctor(
+    data_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-path",
+            help="Optional benchmark dataset path whose filesystem should be inspected.",
+        ),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            help="Emit the complete machine-readable doctor report as JSON.",
+        ),
+    ] = False,
+) -> None:
+    """Inspect host provenance and benchmark readiness without changing machine state."""
+
+    report = assess_host(probe_host(data_path))
+    if json_output:
+        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+    else:
+        snapshot = report.snapshot
+        distro = snapshot.os.distribution or snapshot.os.system
+        version = snapshot.os.distribution_version or snapshot.os.kernel_release
+        typer.echo("LidarPerf host doctor")
+        typer.echo(f"host_sha256: {snapshot.host_sha256}")
+        typer.echo(f"platform: {distro} {version} ({snapshot.os.architecture})")
+        typer.echo(
+            "cpu: "
+            f"{snapshot.cpu.model or 'unknown'}; "
+            f"logical={snapshot.cpu.logical_cpus}; "
+            f"affinity={snapshot.cpu.affinity_count or 'unknown'}"
+        )
+        typer.echo(f"cgroups: {snapshot.cgroups.version}")
+        benchexec = snapshot.runtime.benchexec_available or snapshot.runtime.runexec_available
+        typer.echo(f"benchexec: {'available' if benchexec else 'unavailable'}")
+        typer.echo("eligible: " + ", ".join(report.eligible_measurement_classes))
+        if report.issues:
+            typer.echo("issues:")
+            for issue in report.issues:
+                typer.echo(f"  {issue.severity.value.upper()} [{issue.code}] {issue.message}")
+        else:
+            typer.echo("issues: none")
+
+    if any(issue.severity == DoctorSeverity.ERROR for issue in report.issues):
+        raise typer.Exit(code=2)
 
 
 @app.command("verify")

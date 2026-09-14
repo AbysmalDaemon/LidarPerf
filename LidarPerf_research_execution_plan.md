@@ -2645,3 +2645,115 @@ Rather than keep iterating on a nonessential logging workflow, I removed it and 
 Open the Step 4 PR and run the normal clean Python 3.11–3.13 GitHub Actions matrix. Any remote-only failure will be retained here rather than hidden.
 
 After merge, Step 5 is host fingerprinting and `lidarperf doctor`.
+---
+
+## Project execution log — 2026-09-14 — Step 5 host fingerprinting and `lidarperf doctor`
+
+**Status:** implementation staged on `host-doctor`; local focused validation complete; normal PR CI is the remaining gate before merge.
+
+### Goal
+
+Implement the read-only host-provenance layer required by the benchmark specification before process execution is introduced. The host probe must expose enough machine and runtime state to explain benchmark conditions without silently tuning the system or collecting unnecessary identifying information.
+
+### Work completed
+
+A new `lidarperf.host` package now provides:
+
+- versioned `lidarperf.host.v1` host snapshots;
+- versioned `lidarperf.doctor.v1` readiness reports;
+- CPU model, architecture, logical/physical core count, process affinity, NUMA nodes, scaling drivers, governors, boost state, and available thermal-throttle counters;
+- RAM, available-memory, swap-total, and swap-use state;
+- OS/distribution, kernel, architecture, and libc provenance;
+- cgroup version, visible controllers, direct-writability state, and coarse container detection;
+- optional dataset-filesystem inspection through `--data-path`, including network-filesystem classification;
+- NVIDIA device name/driver discovery and CUDA toolkit discovery when the standard tools are available;
+- one/five/fifteen-minute system load and AC-power state where exposed by the OS;
+- BenchExec/runexec capability discovery;
+- a canonical `host_sha256` identity derived from static-enough host attributes;
+- `lidarperf doctor`, `lidarperf doctor --json`, and `lidarperf doctor --data-path ...`.
+
+The doctor command is deliberately read-only. It never changes CPU governors, affinity, cgroups, boost state, or power settings.
+
+### Stable host identity versus dynamic run state
+
+The host hash intentionally excludes conditions that can change from one run to another on the same machine, including:
+
+- current CPU affinity;
+- governor selection;
+- boost state;
+- current load;
+- swap usage;
+- thermal-throttle counters;
+- dataset path/filesystem choice.
+
+Those values remain in the snapshot because they matter for benchmark interpretation, but they are not used as the stable host identity.
+
+The hash does include OS/kernel/libc, CPU model/topology, scaling-driver family, total memory, NUMA topology, and non-unique GPU model/driver information. A material platform update can therefore intentionally produce a new host identity.
+
+### Privacy / provenance decision
+
+The host probe intentionally does **not** collect:
+
+- usernames;
+- hostnames;
+- IP or MAC addresses;
+- disk serials;
+- motherboard/BIOS serials;
+- GPU UUIDs/serials;
+- raw cgroup paths or container IDs.
+
+Those identifiers are not needed to compare LiDAR-odometry performance and would make public result bundles unnecessarily identifying. This is now a project-level provenance rule rather than an accidental omission.
+
+### Doctor readiness semantics
+
+Every successfully probed machine is eligible for `exploratory` measurement.
+
+`controlled` eligibility is withheld when the doctor cannot establish prerequisites that are required by the v0.1 specification, currently including:
+
+- non-Linux execution;
+- unknown CPU affinity;
+- unavailable/unclassifiable Linux cgroups;
+- missing BenchExec/runexec.
+
+Other conditions are warnings rather than automatic blockers because the specification requires them to be recorded but does not universally forbid them. Examples include unrestricted affinity before the execution backend pins CPUs, powersave governor state, visible cgroup-root non-writability pending delegation checks, swap use, elevated load, and network-mounted dataset storage.
+
+The next BenchExec step remains responsible for the definitive execution-time cgroup/delegation check. `doctor` is a preflight assessment, not a substitute for backend capability verification.
+
+### Filesystem and GPU scope
+
+`--data-path` is opt-in. LidarPerf does not store the caller's absolute path in the portable host snapshot; it stores only the existence/filesystem classification needed for performance interpretation.
+
+NVIDIA discovery uses standard tooling when available but stores device names and driver/toolkit versions only. GPU benchmarking remains experimental in v0.1; this metadata is provenance groundwork, not a claim that GPU timing is authoritative.
+
+### Local focused validation
+
+A standalone local harness exercised the new host package and CLI surface before publication:
+
+```text
+9 passed
+```
+
+The focused tests cover:
+
+- `/proc/meminfo` byte conversion;
+- physical-core parsing from `/proc/cpuinfo`;
+- controlled eligibility on a clean synthetic Linux snapshot;
+- controlled blocking when BenchExec is absent;
+- network-filesystem warning generation;
+- missing dataset-path error generation;
+- a read-only real-host probe smoke test;
+- JSON doctor output;
+- CLI nonzero exit for an explicitly missing `--data-path`.
+
+`compileall` also succeeds for the staged source/tests, and staged Python lines were checked against the repository's 100-character source-line limit.
+
+### Development mistakes / self-review findings
+
+1. The first isolated test harness omitted a root `lidarperf/__init__.py`, causing test collection to fail with `ModuleNotFoundError`. This was a scratch-harness packaging mistake, not a repository implementation failure. The harness was corrected and all focused tests passed.
+2. A pre-publication static review caught that the first `probe.py` draft imported `Iterable` from `typing`. With the repository's Ruff `UP` rule family, that would be flagged in modern Python. It was changed to `collections.abc.Iterable` before the branch commit.
+
+**Learning:** keep the remote PR matrix as the authoritative lint/toolchain gate, but perform a focused local import/compile/test pass and a manual Ruff-rule review before opening the PR so trivial failures do not become review-history noise.
+
+### Next action
+
+Update public documentation, open PR #5, and require the normal Python 3.11/3.12/3.13 Ruff + pytest matrix to pass before merge. After Step 5 merges, Step 6 is the BenchExec execution backend and controlled process resource measurement.
