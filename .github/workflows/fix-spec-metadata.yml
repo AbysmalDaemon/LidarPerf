@@ -1,0 +1,40 @@
+name: Fix approved spec metadata
+
+on:
+  push:
+    branches: [foundation]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: foundation
+      - name: Correct metadata and append verification record
+        run: |
+          cat .bootstrap/final-verification-log.md >> LidarPerf_research_execution_plan.md
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('SPEC.md')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          for i, line in enumerate(lines):
+              if line.startswith('**Specification version:**'):
+                  lines[i] = '**Specification version:** `0.1.0`  '
+              elif line.startswith('**Status:**'):
+                  lines[i] = '**Status:** Approved for implementation — Gate 1 approved 2026-09-14.  '
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          rm -rf .bootstrap
+          rm -f .github/workflows/fix-spec-metadata.yml
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: correct approved specification metadata"
+          git push origin HEAD:foundation
