@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -50,16 +51,20 @@ def main(
 
 @app.command("doctor")
 def doctor(
-    data_path: Path | None = typer.Option(
-        None,
-        "--data-path",
-        help="Optional benchmark dataset path whose filesystem should be inspected.",
-    ),
-    json_output: bool = typer.Option(
-        False,
-        "--json",
-        help="Emit the complete machine-readable doctor report as JSON.",
-    ),
+    data_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-path",
+            help="Optional benchmark dataset path whose filesystem should be inspected.",
+        ),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            help="Emit the complete machine-readable doctor report as JSON.",
+        ),
+    ] = False,
 ) -> None:
     """Inspect host provenance and benchmark readiness without changing machine state."""
 

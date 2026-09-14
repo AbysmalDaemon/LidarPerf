@@ -2,8 +2,8 @@
 
 from .doctor import assess_host
 from .models import (
-    CPUSnapshot,
     CgroupSnapshot,
+    CPUSnapshot,
     DoctorIssue,
     DoctorReport,
     DoctorSeverity,

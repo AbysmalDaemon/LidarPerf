@@ -173,11 +173,7 @@ def assess_host(snapshot: HostSnapshot) -> DoctorReport:
         )
 
     blockers = any(issue.blocks_controlled for issue in issues)
-    classes: tuple[str, ...]
-    if blockers:
-        classes = ("exploratory",)
-    else:
-        classes = ("exploratory", "controlled")
+    classes = ("exploratory",) if blockers else ("exploratory", "controlled")
     return DoctorReport(
         snapshot=snapshot,
         eligible_measurement_classes=classes,

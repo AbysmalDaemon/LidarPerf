@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from lidarperf.host import (
-    CPUSnapshot,
     CgroupSnapshot,
+    CPUSnapshot,
     GPUSnapshot,
     HostSnapshot,
     MemorySnapshot,

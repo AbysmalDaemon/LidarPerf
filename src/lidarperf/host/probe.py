@@ -14,8 +14,8 @@ from pathlib import Path
 from lidarperf.spec.canonical import sha256_fingerprint
 
 from .models import (
-    CPUSnapshot,
     CgroupSnapshot,
+    CPUSnapshot,
     GPUDeviceSnapshot,
     GPUSnapshot,
     HostSnapshot,
