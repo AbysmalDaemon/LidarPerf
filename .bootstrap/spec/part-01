@@ -1,0 +1,463 @@
+ LIO — LiDAR-Inertial Odometry
+
+Allowed runtime information:
+
+- everything permitted by LO
+- IMU angular velocity
+- IMU linear acceleration
+- static LiDAR↔IMU calibration
+
+Forbidden runtime information:
+
+- camera observations
+- wheel odometry
+- GNSS/GPS
+- magnetometer unless a future protocol explicitly permits it
+- external localization
+- prebuilt environment map
+- ground truth
+
+Use of forbidden information makes the result **non-conformant for the LIO track**.
+
+---
+
+# 8. Deferred tracks
+
+The schema MAY reserve values for:
+
+- `slam`
+- `registration`
+
+but v0.1 MUST NOT produce an “official/controlled” LidarPerf verdict for those tracks.
+
+The reason is methodological: loop closure/global optimization and pairwise registration solve materially different problems from local odometry.
+
+---
+
+# 9. Online / fixed-lag / offline semantics
+
+The estimator MUST declare one of:
+
+```yaml
+estimator_semantics:
+  temporal_mode: online_causal
+```
+
+```yaml
+estimator_semantics:
+  temporal_mode: online_fixed_lag
+  fixed_lag_seconds: 1.0
+b``
+
+```yaml
+estimator_semantics:
+  temporal_mode: offline_noncausal
+b``
+
+## 9.1 `online_causal`
+
+The estimate at time `t` does not depend on sensor observations after `t`.
+
+## 9.2 `online_fixed_lagg
+
+The estimator may revise recent states using observations inside a bounded, declared lag.
+
+Fixed-lag smoothing is permitted in LO/LIO and is not considered loop closure.
+
+## 9.3 `offline_noncausal`
+
+The estimate may depend on future observations or the full sequence.
+
+Offline results MAY be evaluated for accuracy but MUST NOT make a strict “real-time odometry” claim against online estimators without explicit labeling.
+
+Strict comparisons MUST require compatible temporal modes, unless the comparison is intentionally exploratory.
+
+---
+
+# 10. Loop-closure rule
+
+LO/LIO protocols MUST NOT use nonlocal loop closure, place recognition, or global re-optimization based on revisiting a previously seen distant region.
+
+A fixed-lag smoother is allowed if its lag is declared.
+
+If nonlocal loop closure is enabled, the run is outside the official v0.1 LO/LIO tracks.
+
+---
+
+# 11. Canonical coordinate convention
+
+LidarPerf MUST use a single internal pose convention.
+
+The canonical pose is:
+
+> `T_W_B`
+
+where `T_W_B` transforms a point expressed in body frame bB` into world/reference frame `W`.
+
+For a point `p_B`:
+
+```text
+p_W = R_W_B * p_B + t_W_B
+```
+
+Requirements:
+
+- right-handed coordinates
+- translation in metres
+- rotation in SO(3)
+- internal timestamps as signed 64-bit integer nanoseconds
+- serialized quaternions, when used, MUST be `[x, y, z, w]`
+- all external formats MUST be converted explicitly into this canonical convention
+
+Adapters MUST document source conventions.
+
+A pose-direction ambiguity MUST be treated as a validation failure, not guessed.
+
+---
+
+# 12. Evaluation body frame
+
+Every trajectory MUST declare the physical frame whose pose it represents.
+
+Examples:
+
+- LiDAR frame
+- IMU frame
+- vehicle/base frame
+
+A protocol MUST declare an `evaluation_frame`.
+
+If estimate and ground truth are in different body frames:
+
+- a fixed, declared extrinsic transform MUST be available, or
+- the trajectories are not strictly comparable.
+
+The applied extrinsic MUST be fingerprinted and stored.
+
+---
+
+# 13. Time semantics
+
+Every sensor stream MUST declare:
+
+- source time unit
+- source time base
+- scan timestamp reference
+- whether per-point timestamps exist
+- whether timestamps were reconstructed
+
+LiDAR scan timestamp reference MUST be one of:
+
+```text
+scan_start
+scan_mid
+scan_end
+unknown
+```
+
+`unknown` is allowed for import, but a protocol MAY reject it.
+
+If per-point timestamps are synthesized or reconstructed, the reconstruction rule MUST be recorded.
+
+---
+
+# 14. Trajectory timestamp association
+
+Timestamp association is part of the protocol.
+
+Allowed modes in v0.1:
+
+```text
+exact
+nearest
+interpolate_reference
+```
+
+## 14.1 `exact`
+
+Estimate/reference timestamps must match exactly after time-base normalization.
+
+## 14.2 `nearest`
+
+Reference poses are matched to estimate timestamps by nearest neighbor subject to an explicit maximum temporal difference.
+
+## 14.3 `interpolate_reference`
+
+The reference trajectory is interpolated to estimator timestamps.
+
+Translation interpolation:
+
+- linear interpolation
+
+Rotation interpolation:
+
+- quaternion SLERP
+
+Rules:
+
+- extrapolation outside reference support is forbidden
+- maximum reference bracketing gap MUST be specified
+- unmatched estimator poses remain unmatched
+- association statistics MUST be reported
+
+There is deliberately **no hidden universal tolerance**.
+
+The protocol/dataset profile MUST state it.
+
+---
+
+# 15. Preprocessing declaration
+
+Preprocessing is part of the experiment.
+
+Every relevant stage MUST declare an owner:
+
+```text
+dataset
+benchmark
+algorithm
+none
+```
+
+The following fields are included in the v0.1 model:
+
+- coordinate transform
+- deskew / motion compensation
+- voxel downsampling
+- crop / ROI
+- minimum range
+- maximum range
+- statistical/radius filtering
+- ground removal
+- intensity filtering
+- timestamp reconstruction
+- point reordering
+- duplicate removal
+
+Example:
+
+```yaml
+preprocessing:
+  deskew:
+    owner: algorithm
+    input_already_deskewed: false
+
+  voxel_downsample:
+    owner: algorithm
+
+  crop:
+    owner: none
+```
+
+A preprocessing operation that materially affects the estimator input MUST NOT occur without being declared.
+
+---
+
+# 16. Deskew / motion-compensation semantics
+
+Deskewing requires explicit treatment because benchmark fairness can depend on whether a dataset is already motion-corrected.
+
+A run MUST declare:
+
+```yaml
+motion_compensation:
+  input_state: raw | pre_deskewed | unknown
+  performed_by: dataset | benchmark | algorithm | none
+  motion_source: none | constant_velocity | imu | other
+```
+
+Strict comparison requires compatible **benchmark-owned/dataset-owned** input semantics.
+
+Algorithm-owned internal deskewing may differ between algorithms; that is considered part of the method.
+
+---
+
+# 17. Tuning policy
+
+Every result MUST declare one tuning class.
+
+## 17.1 `frozen`
+
+One configuration is used across the declared benchmark suite.
+
+## 17.2 `dataset`
+
+One configuration may be selected per dataset, but not per sequence.
+
+## 17.3 `sequence`
+
+Configuration may be changed per sequence.
+
+Results from different tuning classes MAY be shown together, but strict ranking MUST flag the difference.
+
+A public benchmark SHOULD prefer `frozen` unless the protocol explicitly studies tuning sensitivity.
+
+The tuning source SHOULD also be recorded:
+
+```text
+upstream_default
+upstream_recommended
+author_provided
+benchmark_tuned
+custom
+```
+
+---
+
+# 18. Method configuration fingerprint
+
+All estimator configuration that can affect results MUST be captured.
+
+The canonicalized configuration MUST be hashed with SHA-256.
+
+Canonicalization MUST:
+
+- sort mapping keys
+- preserve array order
+- normalize scalar types
+- encode UTF-8
+- avoid nondeterministic serialization
+
+The bundle stores both:
+
+- human-readable configuration
+- configuration SHA-256
+
+---
+
+# 19. Source-code provenance
+
+Where source provenance is available, the method record SHOULD include:
+
+```yaml
+source:
+  repository: https://github.com/...
+  commit: ...
+  tag: ...
+  dirty: false
+```
+
+If the worktree is dirty:
+
+```yaml
+source:
+  dirty: true
+  patch_sha256: ...
+```
+
+For publication-grade open-source results, the exact patch SHOULD be archived where licensing permits.
+
+For binary-only or proprietary methods, the bundle MUST state that exact source reproduction is unavailable.
+
+---
+
+# 20. Build provenance
+
+Where applicable, record:
+
+- compiler
+- compiler version
+- build type
+- relevant compile flags
+- architecture flags
+- Python version
+- dependency-lock hash
+- CUDA version
+- cuDNN version
+- container image digest
+- package versions
+
+A baseline/candidate regression experiment MUST flag unexpected build/dependency changes.
+
+---
+
+# 21. Dataset fingerprint
+
+A dataset sequence MUST be fingerprinted.
+
+The v0.1 preferred exact fingerprint is:
+1. enumerate all input files used by the sequence
+2. use normalized relative paths
+3. record file size
+4. compute SHA-256 for each file
+5. sort manifest entries by normalized path
+6. SHA-256 hash the canonical manifest
+
+Example conceptual record:
+
+```yaml
+dataset:
+  id: boreas/glen/...
+  provider: boreas
+  sequence: ...
+  content_sha256: ...
+  manifest_sha256: ...
+```
+
+Hash results MAY be cached locally because large datasets are expensive to rehash.
+
+If an adapter cannot provide exact input hashes, it MUST report a weaker fingerprint class and the result cannot receive the strongest reproducibility grade.
+
+---
+
+# 22. Ground-truth provenance
+
+Ground truth MUST be treated as an independent input.
+
+Record:
+
+- source/provider
+- reference frame
+- timestamp semantics
+- file/content fingerprint
+- any interpolation
+- any conversion
+- any calibration/extrinsic applied
+
+Ground truth MUST NOT be available to the estimator process unless explicitly required for a non-odometry experiment, in which case the run is not an official LO/LIO result.
+
+---
+
+# 23. Trajectory validity
+
+Before accuracy is computed, trajectory structural validity MUST be checked.
+
+Checks include:
+
+- parse success
+- finite translations
+- valid rotations
+- no NaN/Inf
+- monotonically increasing timestamps unless the format explicitly permits otherwise
+- declared pose convention
+- declared body frame
+- nonempty trajectory
+- temporal overlap with reference
+
+Invalid poses MUST be counted and reported.
+
+They MUST NOT simply be dropped without disclosure.
+
+---
+
+# 24. Completion and coverage
+
+Each run MUST report at least:
+
+- sensor sequence start/end
+- estimator trajectory start/end
+- expected LiDAR scan count when available
+- consumed scan count when observable
+- emitted pose count
+- matched pose count
+- temporal coverage
+- distance coverage where reference distance is available
+- invalid pose count
+- process exit code
+- timeout status
+
+## 24.1 Coverage
+
+The default v0.1 conformance recommendation is:
+
+```te

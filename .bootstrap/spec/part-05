@@ -1,0 +1,11 @@
+hallenge the specification will be logged and may cause a versioned protocol revision, never a silent rewrite
+
+---
+
+# 84. Final specification thesis
+
+LidarPerf v0.1 exists to enforce one principle:
+
+> **A performance number is not meaningful until the input, estimator behavior, preprocessing, evaluation rules, hardware, measurement boundary, validity, and repeatability are known well enough to establish what the number actually represents.**
+
+The project should reject invalid certainty rather than generate convenient benchmark tables.

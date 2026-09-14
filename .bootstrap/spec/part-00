@@ -1,0 +1,308 @@
+# LidarPerf Benchmark Specification
+
+**Document:** `SPEC.md`  
+**Specification version:** Draft `0.1.0`  
+**Date:** 2026-09-14  
+**Status:** Approved for implementation — Gate 1 approved 2026-09-14.**  
+**Project:** LidarPerf
+
+---
+
+## 0. Executive decision
+
+LidarPerf is **not** a generic LiDAR odometry benchmark suite.
+
+LidarPerf is a **conformance, provenance, repeatability, comparability, and performance-regression framework** for LiDAR odometry software.
+
+Its central question is:
+
+> Given two LiDAR-odometry results, can we establish that they were produced under sufficiently equivalent declared conditions, that both estimators remained valid and accurate, and that an observed performance change is a defensible improvement or regression rather than an artifact of different inputs, preprocessing, measurement boundaries, hardware, or run-to-run noise?
+
+This specification deliberately prioritizes **meaningful comparisons over permissive comparisons**. When LidarPerf cannot establish comparability, it MUST say so instead of silently producing a ranking.
+
+---
+
+# 1. Normative language
+
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative.
+
+- **MUST / REQUIRED**: necessary for conformance.
+- **SHOULD**: strongly recommended; deviations require a recorded reason.
+- **MAY**: optional.
+
+A LidarPerf result MUST declare the specification/protocol version against which it was produced.
+
+---
+
+# 2. Goals
+
+LidarPerf v0.1 has seven primary goals.
+
+1. **Conformance**  
+   Verify that an experiment obeyed its declared sensor, preprocessing, evaluation, and execution rules.
+
+2. **Provenance**  
+   Record enough information to determine what data, software, configuration, build, environment, and hardware generated a result.
+
+3. **Correctness before speed**  
+   A broken estimator MUST NOT be reported as a performance improvement merely because it executes faster.
+
+4. **Repeatability**  
+   Multiple executions of nominally identical experiments MUST be representable and their variation MUST be measurable.
+
+5. **Semantic comparability**  
+   LidarPerf MUST distinguish “numbers can be displayed together” from “numbers are scientifically comparable.”
+
+6. **Performance regression testing**  
+   Baseline/candidate comparisons SHOULD support controlled, repeated, paired execution and practical regression thresholds.
+
+7. **Interoperability**  
+   LidarPerf SHOULD reuse existing algorithm/dataset/execution infrastructure rather than becoming another estimator zoo.
+
+---
+
+# 3. Non-goals for v0.1
+
+LidarPerf v0.1 will not attempt to provide:
+
+- a new SLAM algorithm
+- a new ICP/GICP implementation
+- a generic point-cloud processing library
+- a generic dataset-loader ecosystem
+- a ROS bag implementation
+- a replacement for evalio
+- a replacement for evo
+- a replacement for BenchExec
+- a replacement for ros2_tracing
+- a benchmark SaaS / hosted database
+- a universal public leaderboard
+- a GPU-performance standard
+- energy benchmarking
+- visual odometry / camera benchmarking
+- radar odometry
+- semantic mapping
+- loop-closure benchmarking
+- pairwise registration benchmarking
+
+Those may become separate future protocol families, but they are intentionally outside the first implementation.
+
+---
+
+# 4. Evidence and design basis
+
+This specification is informed by the following external work.
+
+## 4.1 evalio
+
+`evalio` already supplies a common LiDAR/LIO data and pipeline interface, dataset management, normalized scan representation, CLI execution, and trajectory statistics.
+
+LidarPerf therefore treats evalio as an **execution/data backend**, not functionality to reimplement.
+
+Reference:
+
+- https://github.com/contagon/evalio
+
+Important implementation observation discovered during specification research:
+
+- evalio's current trajectory alignment implementation spatially aligns the estimate to the **first pose** of the other trajectory.
+- this is not semantically identical to a full-trajectory SE(3) Umeyama alignment used by tools such as evo for APE.
+
+Therefore LidarPerf MUST NOT silently reuse a metric merely because two tools call it “ATE.” Metric semantics must be defined by the LidarPerf protocol and validated independently.
+
+## 4.2 KITTI odometry protocol
+
+The official KITTI odometry benchmark computes translational and rotational errors over all possible subsequences of lengths 100–800 m and reports translation in percent and rotation in degrees per metre.
+
+Reference:
+
+- https://www.cvlibs.net/datasets/kitti/eval_odometry.php
+
+LidarPerf will eventually implement a separately versioned KITTI-compatible profile. It will not pretend that generic APE/RPE is “the KITTI metric.”
+
+## 4.3 Quantitative trajectory evaluation
+
+Zhang and Scaramuzza describe trajectory alignment, ATE/APE, and relative errors and emphasize that alignment semantics depend on the sensing modality.
+
+Reference:
+
+- https://rpg.ifi.uzh.ch/docs/IROS18_Zhang.pdf
+- DOI: 10.1109/IROS.2018.8593941
+
+LidarPerf therefore makes alignment a protocol field rather than an implicit evaluator option.
+
+## 4.4 Reliable benchmarking / BenchExec
+
+Reliable resource measurement requires careful process accounting, monotonic timing, child-process accounting, CPU/memory constraints, and isolation. BenchExec already provides Linux cgroup-based execution and process-tree measurements.
+
+References:
+
+- https://github.com/sosy-lab/benchexec
+- https://www.sosy-lab.org/research/benchmarking/
+
+LidarPerf SHOULD use BenchExec/runexec for benchmark-grade Linux process-level measurements rather than implement its own cgroup monitor.
+
+## 4.5 Stable performance measurement
+
+`pyperf` documents the impact of CPU affinity, CPU isolation, governor state, system load, and machine metadata on benchmark stability.
+
+References:
+
+- https://pyperf.readthedocs.io/en/latest/system.html
+- https://pyperf.readthedocs.io/en/latest/cli.html
+
+LidarPerf therefore records and grades benchmark-host state rather than treating all runs as equally authoritative.
+
+## 4.6 LIO non-reproducibility
+
+Recent LIO research demonstrates noteworthy run-to-run non-reproducibility caused by nondeterministic implementations under nominally constant conditions.
+
+Reference:
+
+- “Unveiling Non-Reproducibility in LiDAR-Inertial Odometry”
+- IEEE Robotics and Automation Letters, Vol. 11, Issue 1
+- DOI: 10.1109/LRA.2025.3636030
+- https://ieeexplore.ieee.org/document/11266943/
+
+LidarPerf therefore treats repeated execution and estimator-output variability as first-class data.
+
+## 4.7 RobotPerf
+
+RobotPerf demonstrates the importance of vendor-neutral, reproducible robotics-computing benchmarks and explicitly distinguishes robotics performance benchmarking from algorithm-development work.
+
+Reference:
+
+- https://github.com/robotperf/benchmarks
+- https://robotperf.github.io/
+
+---
+
+# 5. Fundamental entities
+
+LidarPerf uses the following entities.
+
+## 5.1 Protocol
+
+A **protocol** is the complete set of rules that determines:
+
+- allowed sensors
+- estimator class
+- causal semantics
+- input/preprocessing semantics
+- evaluation frame
+- trajectory association
+- trajectory metrics
+- validity gates
+- timing scope
+- measurement profile
+- repetition policy
+- tuning policy
+
+A protocol is **immutable once released**.
+
+A behavioral change requires a new protocol version.
+
+## 5.2 Method
+
+A **method** is the estimator implementation being evaluated.
+
+It includes:
+
+- name
+- upstream repository
+- version/tag
+- commit SHA where available
+- build provenance
+- runtime dependencies
+- algorithm configuration
+- patches / dirty-source state
+
+## 5.3 Dataset sequence
+
+A **dataset sequence** is the exact sensor-data input and associated reference trajectory used for an experiment.
+
+It MUST have a stable fingerprint.
+
+## 5.4 Trial
+
+A **trial** is one execution of one method/configuration on one dataset sequence under one execution environment.
+
+## 5.5 Run set
+
+A **run set** is one or more trials that intentionally represent the same experiment, generally for repeatability/performance statistics.
+
+## 5.6 Result bundle
+
+A **result bundle** is the immutable LidarPerf artifact containing the protocol, provenance, per-trial outputs, aggregate metrics, logs, and checksums.
+
+## 5.7 Comparison
+
+A **comparison** places result bundles side by side after evaluating which dimensions are semantically comparable.
+
+## 5.8 Regression experiment
+
+A **regression experiment** is a controlled baseline/candidate comparison of the same method where differences are explicitly declared and accuracy validity is checked before performance conclusions are permitted.
+
+---
+
+# 6. Protocol identity and versioning
+
+Each released protocol MUST have:
+
+```yaml
+protocol:
+  id: lidarperf/lo-se3
+  version: 1
+```
+
+The fully resolved protocol MUST also receive a canonical SHA-256 content fingerprint.
+
+Example:
+
+```yaml
+protocol:
+  id: lidarperf/lo-se3
+  version: 1
+  resolved_sha256: "..."
+```
+
+The human-readable ID/version is for communication.
+
+The resolved hash is the authoritative check that two result bundles used semantically identical protocol content.
+
+A released protocol MUST NOT be edited in a way that changes behavior.
+
+Editorial corrections that do not alter semantics MAY retain the protocol version, but the repository history MUST retain the change.
+
+---
+
+# 7. Supported benchmark tracks in v0.1
+
+v0.1 officially supports only two estimator tracks.
+
+## 7.1 LO — LiDAR Odometry
+
+Allowed runtime information:
+
+- LiDAR geometry
+- LiDAR intensity where provided
+- LiDAR ring/channel identifiers
+- LiDAR point timestamps
+- static sensor calibration
+- static sensor intrinsics/extrinsics
+- declared algorithm constants/configuration
+
+Forbidden runtime information:
+
+- IMU measurements
+- camera images/features
+- wheel odometry
+- GNSS/GPS
+- magnetometer
+- external localization
+- a prebuilt map of the evaluation environment
+- ground truth
+- undeclared precomputed motion estimates
+
+Use of a forbidden source makes the result **non-conformant for the LO track**.
+
+## 7.2
