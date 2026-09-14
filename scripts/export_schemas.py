@@ -7,7 +7,6 @@ from pathlib import Path
 
 from lidarperf.spec import protocol_json_schema
 
-
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "schemas" / "protocol-v0.1.0.schema.json"
 
