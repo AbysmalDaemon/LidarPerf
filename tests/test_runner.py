@@ -135,13 +135,13 @@ def test_run_evalio_benchmark_writes_verified_bundle(tmp_path: Path) -> None:
         method_version="1.3.0",
         bundle_dir=bundle,
         workspace=tmp_path / "work",
-        measurement_class=MeasurementClass.CONTROLLED,
+        measurement_class=MeasurementClass.EXPLORATORY,
         evalio_backend=FakeEvalioBackend(),
         execution_backend=FakeBenchExecBackend(),
     )
 
     assert report.status == VerificationStatus.VALID
-    assert manifest.measurement_class == MeasurementClass.CONTROLLED
+    assert manifest.measurement_class == MeasurementClass.EXPLORATORY
     assert manifest.conformance_status.value == "conformant"
     assert (bundle / "trials/0001/process.log").is_file()
     assert (bundle / "artifacts/evalio_estimate.csv").is_file()
@@ -149,9 +149,9 @@ def test_run_evalio_benchmark_writes_verified_bundle(tmp_path: Path) -> None:
     assert "trials/0001/resources.json" in manifest.file_inventory
 
 
-def test_controlled_run_refuses_unready_benchexec(tmp_path: Path) -> None:
+def test_run_refuses_unready_benchexec_even_for_exploratory(tmp_path: Path) -> None:
     executor = FakeBenchExecBackend(controlled_ready=False)
-    with pytest.raises(BenchmarkRunError, match="controlled BenchExec execution is unavailable"):
+    with pytest.raises(BenchmarkRunError, match="BenchExec process-tree accounting is unavailable"):
         run_evalio_benchmark(
             protocol_path="protocols/lo/se3_v1.yaml",
             dataset="example/sequence",
@@ -163,17 +163,28 @@ def test_controlled_run_refuses_unready_benchexec(tmp_path: Path) -> None:
             method_version="1.3.0",
             bundle_dir=tmp_path / "result.lperf",
             workspace=tmp_path / "work",
-            measurement_class=MeasurementClass.CONTROLLED,
+            measurement_class=MeasurementClass.EXPLORATORY,
             evalio_backend=FakeEvalioBackend(),
             execution_backend=executor,
         )
     assert not executor.executed
 
 
-def test_publication_class_requires_repeated_run_phase(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("measurement_class", "minimum"),
+    [
+        (MeasurementClass.CONTROLLED, 5),
+        (MeasurementClass.PUBLICATION, 10),
+    ],
+)
+def test_stronger_measurement_classes_require_repeated_run_phase(
+    tmp_path: Path,
+    measurement_class: MeasurementClass,
+    minimum: int,
+) -> None:
     with pytest.raises(
         BenchmarkRunError,
-        match="publication-class evidence requires repeated trials",
+        match=rf"{measurement_class.value}-class evidence requires at least {minimum}",
     ):
         run_evalio_benchmark(
             protocol_path="protocols/lo/se3_v1.yaml",
@@ -186,7 +197,7 @@ def test_publication_class_requires_repeated_run_phase(tmp_path: Path) -> None:
             method_version="1.3.0",
             bundle_dir=tmp_path / "result.lperf",
             workspace=tmp_path / "work",
-            measurement_class=MeasurementClass.PUBLICATION,
+            measurement_class=measurement_class,
             evalio_backend=FakeEvalioBackend(),
             execution_backend=FakeBenchExecBackend(),
         )
