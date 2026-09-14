@@ -13,6 +13,7 @@ import yaml
 from pydantic import ValidationError
 
 from lidarperf.spec import ProtocolLoadError, load_protocol, sha256_fingerprint
+from lidarperf.spec.enums import MeasurementClass
 
 from .models import (
     AggregateRecord,
@@ -229,6 +230,14 @@ def _verify_trial_log_layout(
     )
 
 
+def _minimum_trials(protocol, measurement_class: MeasurementClass) -> int:
+    if measurement_class == MeasurementClass.EXPLORATORY:
+        return protocol.repetition.exploratory_min_trials
+    if measurement_class == MeasurementClass.CONTROLLED:
+        return protocol.repetition.controlled_min_trials
+    return protocol.repetition.publication_min_trials
+
+
 def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
     """Verify a result bundle's schema, provenance links, inventory, and SHA-256 integrity."""
 
@@ -265,10 +274,12 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
 
     _verify_checksums(root, manifest, collector)
 
+    resolved_protocol = None
     protocol_path = root / "protocol.yaml"
     if protocol_path.is_file():
         try:
             resolved = load_protocol(protocol_path)
+            resolved_protocol = resolved.document
             if resolved.document.protocol.id != manifest.protocol.id:
                 collector.error(
                     "PROTOCOL_ID_MISMATCH",
@@ -326,6 +337,21 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
             "MEASUREMENT_CLASS_MISMATCH",
             "manifest measurement_class differs from environment.json",
         )
+
+    if resolved_protocol is not None:
+        if manifest.measurement_class not in resolved_protocol.measurement.allowed_classes:
+            collector.error(
+                "MEASUREMENT_CLASS_NOT_ALLOWED",
+                f"protocol does not allow measurement class {manifest.measurement_class.value!r}",
+            )
+        minimum_trials = _minimum_trials(resolved_protocol, manifest.measurement_class)
+        if manifest.trial_count < minimum_trials:
+            collector.error(
+                "MEASUREMENT_TRIAL_COUNT_TOO_LOW",
+                f"{manifest.measurement_class.value}-class result declares "
+                f"{manifest.trial_count} trial(s), but protocol requires at least "
+                f"{minimum_trials}",
+            )
 
     expected_trial_records = {
         f"trials/{trial_index:04d}/trial.json"
