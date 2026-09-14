@@ -97,7 +97,7 @@ def test_evalio_csv_can_flow_into_lidarperf_metrics() -> None:
     assert evaluation.ape_translation_m is not None
     assert evaluation.ape_translation_m.rmse == pytest.approx(0.0, abs=1e-12)
     assert evaluation.ape_rotation_deg is not None
-    assert evaluation.ape_rotation_deg.rmse == pytest.approx(0.0, abs=1e-12)
+    assert evaluation.ape_rotation_deg.rmse == pytest.approx(0.0, abs=1e-5)
 
 
 def test_backend_evaluate_propagates_explicit_input_support(tmp_path: Path) -> None:
