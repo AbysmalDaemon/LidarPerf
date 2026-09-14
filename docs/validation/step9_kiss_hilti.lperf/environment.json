@@ -1,0 +1,101 @@
+{
+  "execution": {
+    "backend": "benchexec-runexec",
+    "backend_version": "runexec 3.35",
+    "command_argv": [
+      "evalio",
+      "run",
+      "-o",
+      ".step9_work/run/evalio",
+      "-d",
+      "hilti_2022/basement_2",
+      "-p",
+      "kiss",
+      "-l",
+      "120"
+    ],
+    "performance_authoritative": false,
+    "performance_authority_reason": "GitHub-hosted runner; BenchExec accounting is integration evidence, not a stable performance baseline",
+    "timing_scope": "end_to_end"
+  },
+  "host": {
+    "captured_at": "2026-09-14T18:45:03.008657Z",
+    "cgroups": {
+      "containerized": false,
+      "controllers": [
+        "cpu",
+        "cpuset",
+        "dmem",
+        "hugetlb",
+        "io",
+        "memory",
+        "misc",
+        "pids",
+        "rdma"
+      ],
+      "version": "v2",
+      "writable": false
+    },
+    "cpu": {
+      "affinity_cpus": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "architecture": "x86_64",
+      "boost_enabled": null,
+      "governors": [],
+      "logical_cpus": 4,
+      "model": "AMD EPYC 7763 64-Core Processor",
+      "numa_nodes": [
+        0
+      ],
+      "physical_cores": 2,
+      "scaling_drivers": [],
+      "thermal_throttle_count": null
+    },
+    "gpu": {
+      "cuda_toolkit_version": null,
+      "devices": [],
+      "nvidia_smi_available": false
+    },
+    "host_sha256": "8e1dde09caec98446dc98306bad670d96472614ab08c27cb8ae44c597daf5f30",
+    "memory": {
+      "available_bytes": 15637323776,
+      "swap_free_bytes": 3221221376,
+      "swap_total_bytes": 3221221376,
+      "total_bytes": 16766414848
+    },
+    "os": {
+      "architecture": "x86_64",
+      "distribution": "Ubuntu",
+      "distribution_version": "24.04",
+      "kernel_release": "6.17.0-1022-azure",
+      "kernel_version": "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+      "libc": "glibc 2.39",
+      "system": "Linux"
+    },
+    "runtime": {
+      "ac_power_online": null,
+      "benchexec_available": true,
+      "load_15m": 0.107421875,
+      "load_1m": 0.2685546875,
+      "load_5m": 0.224609375,
+      "runexec_available": true
+    },
+    "schema_version": "lidarperf.host.v1",
+    "storage": {
+      "exists": true,
+      "filesystem_type": "ext4",
+      "inspected": true,
+      "network_filesystem": false
+    }
+  },
+  "measurement_class": "exploratory",
+  "schema_version": "lidarperf.environment.v1",
+  "software": {
+    "evalio": "0.6.1",
+    "lidarperf": "0.0.0"
+  }
+}
