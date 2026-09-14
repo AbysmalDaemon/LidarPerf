@@ -15,7 +15,7 @@ from lidarperf.backends.evalio import (
     load_evalio_trajectory,
 )
 from lidarperf.spec.models import BenchmarkProtocol
-from lidarperf.trajectory import evaluate_trajectory
+from lidarperf.trajectory import EvaluationSupport, evaluate_trajectory
 
 
 def _sha256(path: Path) -> str:
@@ -37,13 +37,32 @@ def _kiss_version() -> str:
 
 def _validation_protocol(root: Path) -> BenchmarkProtocol:
     data = yaml.safe_load((root / "protocols/lo/se3_v1.yaml").read_text(encoding="utf-8"))
-    # Hilti GT is higher-rate than LiDAR. Association tolerance is explicit and
-    # intentionally belongs to this integration validation, not a hidden evaluator default.
     data["trajectory"]["association"] = {
         "mode": "nearest",
         "max_time_delta_ns": 10_000_000,
     }
     return BenchmarkProtocol.model_validate(data)
+
+
+def _input_support(dataset_name: str, requested_lidar_scans: int) -> EvaluationSupport:
+    """Read the actual first/last LiDAR timestamps consumed by the evalio prefix run."""
+
+    from evalio import datasets as ds
+
+    parsed = ds.parse_config({"name": dataset_name, "length": requested_lidar_scans})
+    if isinstance(parsed, ds.DatasetConfigError):
+        raise RuntimeError(f"cannot resolve evalio dataset {dataset_name}: {parsed}")
+    sequence, _ = parsed[0]
+    timestamps: list[int] = []
+    for measurement in sequence.lidar():
+        timestamps.append(int(measurement.stamp.to_nsec()))
+        if len(timestamps) >= requested_lidar_scans:
+            break
+    if len(timestamps) != requested_lidar_scans:
+        raise RuntimeError(
+            f"requested {requested_lidar_scans} LiDAR scans but dataset yielded {len(timestamps)}"
+        )
+    return EvaluationSupport(start_ns=timestamps[0], end_ns=timestamps[-1])
 
 
 def main() -> None:
@@ -62,12 +81,13 @@ def main() -> None:
         pipeline=args.pipeline,
     )
     protocol = _validation_protocol(root)
+    support = _input_support(args.dataset, args.length)
     estimate = load_evalio_trajectory(paths.estimate, body_frame=protocol.trajectory.evaluation_frame)
     reference = load_evalio_trajectory(
         paths.ground_truth,
         body_frame=protocol.trajectory.evaluation_frame,
     )
-    evaluation = evaluate_trajectory(estimate, reference, protocol)
+    evaluation = evaluate_trajectory(estimate, reference, protocol, support=support)
 
     if len(estimate) < 20:
         raise RuntimeError(f"KISS produced too few poses for integration validation: {len(estimate)}")
@@ -93,6 +113,12 @@ def main() -> None:
         ),
         "dataset": args.dataset,
         "requested_lidar_scans": args.length,
+        "input_support": {
+            "start_ns": support.start_ns,
+            "end_ns": support.end_ns,
+            "duration_ns": support.duration_ns,
+            "source": "evalio dataset LiDAR timestamps",
+        },
         "pipeline": args.pipeline,
         "evalio_version": evalio_version(),
         "kiss_version": _kiss_version(),

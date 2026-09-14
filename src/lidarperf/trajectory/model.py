@@ -120,6 +120,27 @@ class Trajectory:
 
 
 @dataclass(frozen=True, slots=True)
+class EvaluationSupport:
+    """Declared sensor/input time interval that an estimator was expected to cover.
+
+    Coverage must be measured against the input actually benchmarked, not against
+    whichever reference trajectory happens to be available on disk. This matters
+    for prefix/segment experiments where ground truth spans a longer sequence.
+    """
+
+    start_ns: int
+    end_ns: int
+
+    def __post_init__(self) -> None:
+        if self.end_ns < self.start_ns:
+            raise ValueError("evaluation support end_ns must be >= start_ns")
+
+    @property
+    def duration_ns(self) -> int:
+        return self.end_ns - self.start_ns
+
+
+@dataclass(frozen=True, slots=True)
 class TrajectoryValidationReport:
     """Structural validity findings for one trajectory."""
 
@@ -159,6 +180,8 @@ class AssociationStats:
     interpolated_pose_count: int
     max_abs_time_delta_ns: int | None
     mean_abs_time_delta_ns: float | None
+    coverage_support_start_ns: int
+    coverage_support_end_ns: int
     temporal_coverage: float
     distance_coverage: float | None
 
@@ -278,6 +301,8 @@ class TrajectoryEvaluation:
                 self.association.unmatched_estimate_pose_count
             ),
             "association.interpolated_pose_count": self.association.interpolated_pose_count,
+            "coverage.support_start_ns": self.association.coverage_support_start_ns,
+            "coverage.support_end_ns": self.association.coverage_support_end_ns,
             "coverage.temporal_fraction": self.association.temporal_coverage,
             "coverage.temporal_min_required": self.temporal_coverage_min,
             "coverage.temporal_pass": self.temporal_coverage_pass,
