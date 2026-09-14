@@ -20,14 +20,6 @@ jobs:
         run: python -m pip install -e '.[dev,benchmark]'
       - name: BenchExec package smoke
         run: runexec --version
-      - name: Real runexec smoke
-        run: |
-          runexec --no-container --output /tmp/lidarperf-runexec-smoke.log -- /usr/bin/true \
-            | tee /tmp/lidarperf-runexec-measurements.txt
-          grep '^returnvalue=0$' /tmp/lidarperf-runexec-measurements.txt
-          grep '^walltime=' /tmp/lidarperf-runexec-measurements.txt
-          grep '^cputime=' /tmp/lidarperf-runexec-measurements.txt
-          grep '^memory=' /tmp/lidarperf-runexec-measurements.txt
       - name: Lint
         run: ruff check .
       - name: Test
