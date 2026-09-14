@@ -7,13 +7,22 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
-from .models import CommandExecutionResult, CommandSpec, ExecutionMeasurements, ResourceLimits
+from .models import (
+    BenchExecCapability,
+    CommandExecutionResult,
+    CommandSpec,
+    ExecutionMeasurements,
+    ResourceLimits,
+)
 
 _TIME_KEYS = {"walltime", "cputime"}
 _TIMEOUT_REASONS = {"cputime", "walltime", "softtimelimit", "timelimit"}
 _MEMORY_PATTERN = re.compile(r"^(?P<value>\d+)(?:B)?$")
+_MAX_DIAGNOSTIC_LENGTH = 600
 
 
 class BenchExecError(RuntimeError):
@@ -34,6 +43,13 @@ def _format_seconds(value: float) -> str:
 
 def _format_ids(values: tuple[int, ...]) -> str:
     return ",".join(str(value) for value in values)
+
+
+def _compact_diagnostic(value: str) -> str:
+    compact = " ".join(value.split())
+    if len(compact) <= _MAX_DIAGNOSTIC_LENGTH:
+        return compact
+    return compact[: _MAX_DIAGNOSTIC_LENGTH - 3] + "..."
 
 
 def _parse_time(value: str, key: str) -> float:
@@ -103,12 +119,15 @@ class BenchExecBackend:
         if self._version is not None:
             return self._version
         executable = self._require_available()
-        result = subprocess.run(
-            [executable, "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                [executable, "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError as exc:
+            raise BenchExecUnavailableError(f"cannot execute runexec: {exc}") from exc
         if result.returncode != 0:
             return None
         line = next((line.strip() for line in result.stdout.splitlines() if line.strip()), None)
@@ -161,19 +180,22 @@ class BenchExecBackend:
         args = self.build_command(command, selected_limits, combined_output_log)
         environment = os.environ.copy()
         environment.update(command.environment)
-        result = subprocess.run(
-            args,
-            check=False,
-            capture_output=True,
-            text=True,
-            env=environment,
-        )
+        try:
+            result = subprocess.run(
+                args,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+        except OSError as exc:
+            raise BenchExecUnavailableError(f"cannot execute runexec: {exc}") from exc
         raw = parse_runexec_stdout(result.stdout)
         if not _TIME_KEYS.issubset(raw):
             diagnostic = result.stderr.strip() or result.stdout.strip() or "no diagnostic output"
             raise BenchExecOutputError(
                 "runexec did not report both walltime and cputime; "
-                f"backend exit={result.returncode}: {diagnostic}"
+                f"backend exit={result.returncode}: {_compact_diagnostic(diagnostic)}"
             )
         wall_time = _parse_time(raw["walltime"], "walltime")
         cpu_time = _parse_time(raw["cputime"], "cputime")
@@ -208,4 +230,59 @@ class BenchExecBackend:
             timed_out=timed_out,
             combined_output_log=combined_output_log,
             raw_measurements=raw,
+        )
+
+    def probe_capability(self) -> BenchExecCapability:
+        """Actively verify that runexec can produce controlled process-tree measurements."""
+
+        installed = self._runexec_path is not None
+        try:
+            backend_version = self.version()
+        except BenchExecUnavailableError as exc:
+            return BenchExecCapability(
+                backend_version=None,
+                installed=installed,
+                controlled_ready=False,
+                reason=str(exc),
+            )
+
+        with tempfile.TemporaryDirectory(prefix="lidarperf-benchexec-probe-") as directory:
+            output = Path(directory) / "process.log"
+            try:
+                result = self.execute(
+                    CommandSpec(argv=(sys.executable, "-c", "pass")),
+                    combined_output_log=output,
+                )
+            except BenchExecError as exc:
+                reason = str(exc)
+                if "cgroup" in reason.lower():
+                    reason = (
+                        "runexec is installed but cannot access delegated cgroups required for "
+                        "controlled CPU/memory accounting on this host"
+                    )
+                return BenchExecCapability(
+                    backend_version=backend_version,
+                    installed=installed,
+                    controlled_ready=False,
+                    reason=reason,
+                )
+
+        if not result.succeeded:
+            return BenchExecCapability(
+                backend_version=backend_version,
+                installed=installed,
+                controlled_ready=False,
+                reason="runexec probe process did not complete successfully",
+            )
+        if result.measurements.peak_memory_bytes is None:
+            return BenchExecCapability(
+                backend_version=backend_version,
+                installed=installed,
+                controlled_ready=False,
+                reason="runexec probe did not provide process-tree memory measurement",
+            )
+        return BenchExecCapability(
+            backend_version=backend_version,
+            installed=installed,
+            controlled_ready=True,
         )
