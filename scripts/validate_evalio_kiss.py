@@ -82,7 +82,10 @@ def main() -> None:
     )
     protocol = _validation_protocol(root)
     input_support = _input_support(args.dataset, args.length)
-    estimate = load_evalio_trajectory(paths.estimate, body_frame=protocol.trajectory.evaluation_frame)
+    estimate = load_evalio_trajectory(
+        paths.estimate,
+        body_frame=protocol.trajectory.evaluation_frame,
+    )
     reference = load_evalio_trajectory(
         paths.ground_truth,
         body_frame=protocol.trajectory.evaluation_frame,
@@ -90,7 +93,9 @@ def main() -> None:
     evaluation = evaluate_trajectory(estimate, reference, protocol, support=input_support)
 
     if len(estimate) < 20:
-        raise RuntimeError(f"KISS produced too few poses for integration validation: {len(estimate)}")
+        raise RuntimeError(
+            f"KISS produced too few poses for integration validation: {len(estimate)}"
+        )
     if evaluation.association.matched_pose_count < 20:
         raise RuntimeError(
             "too few KISS poses could be associated to Hilti ground truth: "
@@ -111,7 +116,7 @@ def main() -> None:
         "validation_scope": "functional_integration_only",
         "performance_authoritative": False,
         "reason_performance_not_authoritative": (
-            "GitHub-hosted runner; this validation proves estimator/data/trajectory integration only"
+            "GitHub-hosted runner; validation proves estimator/data/trajectory integration only"
         ),
         "dataset": args.dataset,
         "requested_lidar_scans": args.length,
