@@ -56,19 +56,42 @@ def test_explicit_input_support_prevents_full_ground_truth_from_penalizing_prefi
     assert without_support.association.temporal_coverage == pytest.approx(1 / 3)
     assert with_support.association.temporal_coverage == pytest.approx(1.0)
     assert with_support.association.distance_coverage == pytest.approx(1.0)
+    assert with_support.association.input_support_start_ns == 10
+    assert with_support.association.input_support_end_ns == 30
     assert with_support.association.coverage_support_start_ns == 10
     assert with_support.association.coverage_support_end_ns == 30
     assert with_support.temporal_coverage_pass is True
 
 
-def test_evaluation_support_must_lie_inside_reference() -> None:
+def test_input_support_is_clipped_to_reference_for_accuracy_coverage() -> None:
+    reference = _trajectory(
+        [10, 20, 30],
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0]],
+    )
+    evaluation = evaluate_trajectory(
+        reference,
+        reference,
+        _protocol(),
+        support=EvaluationSupport(start_ns=0, end_ns=40),
+    )
+
+    assert evaluation.association.input_support_start_ns == 0
+    assert evaluation.association.input_support_end_ns == 40
+    assert evaluation.association.coverage_support_start_ns == 10
+    assert evaluation.association.coverage_support_end_ns == 30
+    assert evaluation.association.temporal_coverage == pytest.approx(1.0)
+    assert evaluation.association.distance_coverage == pytest.approx(1.0)
+    assert evaluation.temporal_coverage_pass is True
+
+
+def test_input_support_without_reference_overlap_is_rejected() -> None:
     reference = _trajectory([10, 20, 30], [[0, 0, 0], [1, 0, 0], [1, 1, 0]])
-    with pytest.raises(TrajectoryAssociationError, match="inside the reference trajectory"):
+    with pytest.raises(TrajectoryAssociationError, match="does not overlap reference trajectory"):
         evaluate_trajectory(
             reference,
             reference,
             _protocol(),
-            support=EvaluationSupport(start_ns=0, end_ns=30),
+            support=EvaluationSupport(start_ns=0, end_ns=5),
         )
 
 
@@ -85,3 +108,22 @@ def test_association_only_counts_estimates_inside_declared_support() -> None:
     )
     assert evaluation.association.matched_pose_count == 3
     assert evaluation.association.temporal_coverage == pytest.approx(1.0)
+
+
+def test_metric_values_retain_input_and_evaluable_support() -> None:
+    reference = _trajectory(
+        [10, 20, 30],
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0]],
+    )
+    evaluation = evaluate_trajectory(
+        reference,
+        reference,
+        _protocol(),
+        support=EvaluationSupport(start_ns=0, end_ns=40),
+    )
+    values = evaluation.metric_values()
+
+    assert values["coverage.input_support_start_ns"] == 0
+    assert values["coverage.input_support_end_ns"] == 40
+    assert values["coverage.support_start_ns"] == 10
+    assert values["coverage.support_end_ns"] == 30
