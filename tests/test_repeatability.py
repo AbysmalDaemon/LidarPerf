@@ -8,7 +8,7 @@ from lidarperf.repeatability import (
     summarize_scalars,
     trajectory_repeatability,
 )
-from lidarperf.trajectory import Trajectory
+from lidarperf.trajectory import Trajectory, parse_tum, serialize_tum
 
 
 def _trajectory(offset: float = 0.0) -> Trajectory:
@@ -53,3 +53,17 @@ def test_trajectory_repeatability_is_all_pairwise_without_hidden_alignment() -> 
     assert result["maximum_pose_translation_delta_m"] == pytest.approx(0.6)
     assert result["maximum_pose_rotation_delta_deg"] == pytest.approx(0.0)
     assert result["translation_pairwise_rmse_m"]["maximum"] > 0.0
+
+
+def test_bundle_serialization_is_the_repeatability_authority() -> None:
+    first = _trajectory()
+    second = _trajectory(4.0e-13)
+    raw = trajectory_repeatability([first, second])
+    canonical = trajectory_repeatability(
+        [
+            parse_tum(serialize_tum(first), body_frame="body"),
+            parse_tum(serialize_tum(second), body_frame="body"),
+        ]
+    )
+    assert raw["maximum_pose_translation_delta_m"] > 0.0
+    assert canonical["maximum_pose_translation_delta_m"] == 0.0

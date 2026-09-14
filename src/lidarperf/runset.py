@@ -40,7 +40,7 @@ from lidarperf.repeatability import scalar_distributions, trajectory_repeatabili
 from lidarperf.runner import BenchmarkRunError, BenchmarkVerificationError
 from lidarperf.spec import load_protocol, sha256_fingerprint
 from lidarperf.spec.enums import MeasurementClass
-from lidarperf.trajectory import EvaluationSupport, Trajectory, serialize_tum
+from lidarperf.trajectory import EvaluationSupport, Trajectory, parse_tum, serialize_tum
 
 
 def _required_trial_count(protocol, measurement_class: MeasurementClass) -> int:
@@ -222,7 +222,12 @@ def run_evalio_repeated_benchmark(
             )
             successful_metric_records.append(metrics)
             successful_resource_records.append(resources)
-            successful_trajectories.append(trajectory)
+            successful_trajectories.append(
+    parse_tum(
+        serialize_tum(trajectory),
+        body_frame=protocol.trajectory.evaluation_frame,
+    )
+)
 
             current_gt_hash = _sha256_file(paths.ground_truth)
             if ground_truth_sha256 is None:
