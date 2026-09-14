@@ -25,19 +25,26 @@ def _require_structurally_valid(trajectory: Trajectory, label: str) -> None:
         raise TrajectoryValidationError(f"{label} trajectory is structurally invalid", report)
 
 
-def _default_support(reference: Trajectory) -> EvaluationSupport:
+def _reference_support(reference: Trajectory) -> EvaluationSupport:
     if reference.start_ns is None or reference.end_ns is None:
         raise TrajectoryAssociationError("reference trajectory is empty")
     return EvaluationSupport(start_ns=reference.start_ns, end_ns=reference.end_ns)
 
 
-def _validate_support(reference: Trajectory, support: EvaluationSupport) -> None:
-    if reference.start_ns is None or reference.end_ns is None:
-        raise TrajectoryAssociationError("reference trajectory is empty")
-    if support.start_ns < reference.start_ns or support.end_ns > reference.end_ns:
+def _evaluable_support(
+    reference: Trajectory,
+    input_support: EvaluationSupport,
+) -> EvaluationSupport:
+    """Return the portion of declared input support covered by reference ground truth."""
+
+    reference_support = _reference_support(reference)
+    start_ns = max(input_support.start_ns, reference_support.start_ns)
+    end_ns = min(input_support.end_ns, reference_support.end_ns)
+    if end_ns < start_ns:
         raise TrajectoryAssociationError(
-            "evaluation support must lie inside the reference trajectory time support"
+            "declared input support does not overlap reference trajectory time support"
         )
+    return EvaluationSupport(start_ns=start_ns, end_ns=end_ns)
 
 
 def _coverage(support: EvaluationSupport, matched_estimate_timestamps: np.ndarray) -> float:
@@ -79,7 +86,7 @@ def _reference_positions_for_support(
     reference: Trajectory,
     support: EvaluationSupport,
 ) -> np.ndarray:
-    """Sample reference path on the exact declared support including interpolated boundaries."""
+    """Sample reference path on the exact evaluable support including boundaries."""
 
     if support.duration_ns == 0:
         return np.asarray([_reference_position_at(reference, support.start_ns)], dtype=np.float64)
@@ -126,19 +133,18 @@ def associate_trajectories(
     *,
     support: EvaluationSupport | None = None,
 ) -> AssociatedTrajectories:
-    """Associate estimate/reference poses under an explicit protocol and input support.
+    """Associate estimate/reference poses under explicit protocol and support semantics.
 
-    ``support`` is the declared sensor/input interval of the benchmark trial. If
-    omitted, the full reference trajectory is used for backward-compatible
-    full-sequence evaluation. Prefix/segment experiments must pass their actual
-    input support so a full-length ground-truth file cannot make valid output
-    appear to have low coverage.
+    ``support`` is the declared sensor/input interval of the benchmark trial. Accuracy
+    coverage is measured on the intersection of that interval and the available
+    reference trajectory. This keeps prefix/segment runs honest without penalizing an
+    estimator for reference data that does not exist outside the ground-truth support.
     """
 
     _require_structurally_valid(estimate, "estimate")
     _require_structurally_valid(reference, "reference")
-    resolved_support = support or _default_support(reference)
-    _validate_support(reference, resolved_support)
+    input_support = support or _reference_support(reference)
+    evaluable_support = _evaluable_support(reference, input_support)
 
     estimate_indices: list[int] = []
     reference_indices: list[int] = []
@@ -154,7 +160,7 @@ def associate_trajectories(
         lookup = {int(timestamp): index for index, timestamp in enumerate(reference_ts)}
         for estimate_index, timestamp_value in enumerate(estimate.timestamps_ns):
             timestamp = int(timestamp_value)
-            if timestamp < resolved_support.start_ns or timestamp > resolved_support.end_ns:
+            if timestamp < input_support.start_ns or timestamp > input_support.end_ns:
                 continue
             reference_index = lookup.get(timestamp)
             if reference_index is None:
@@ -170,7 +176,7 @@ def associate_trajectories(
         assert policy.max_time_delta_ns is not None
         for estimate_index, timestamp_value in enumerate(estimate.timestamps_ns):
             timestamp = int(timestamp_value)
-            if timestamp < resolved_support.start_ns or timestamp > resolved_support.end_ns:
+            if timestamp < input_support.start_ns or timestamp > input_support.end_ns:
                 continue
             reference_index = _nearest_reference_index(reference_ts, timestamp)
             reference_timestamp = int(reference_ts[reference_index])
@@ -188,7 +194,7 @@ def associate_trajectories(
         assert policy.max_reference_gap_ns is not None
         for estimate_index, timestamp_value in enumerate(estimate.timestamps_ns):
             timestamp = int(timestamp_value)
-            if timestamp < resolved_support.start_ns or timestamp > resolved_support.end_ns:
+            if timestamp < input_support.start_ns or timestamp > input_support.end_ns:
                 continue
             insertion = int(np.searchsorted(reference_ts, timestamp, side="left"))
             if insertion < len(reference) and int(reference_ts[insertion]) == timestamp:
@@ -253,10 +259,12 @@ def associate_trajectories(
         interpolated_pose_count=interpolated_count,
         max_abs_time_delta_ns=int(abs_deltas.max()) if abs_deltas.size else None,
         mean_abs_time_delta_ns=float(abs_deltas.mean()) if abs_deltas.size else None,
-        coverage_support_start_ns=resolved_support.start_ns,
-        coverage_support_end_ns=resolved_support.end_ns,
-        temporal_coverage=_coverage(resolved_support, matched_estimate.timestamps_ns),
-        distance_coverage=_distance_coverage(reference, matched_reference, resolved_support),
+        input_support_start_ns=input_support.start_ns,
+        input_support_end_ns=input_support.end_ns,
+        coverage_support_start_ns=evaluable_support.start_ns,
+        coverage_support_end_ns=evaluable_support.end_ns,
+        temporal_coverage=_coverage(evaluable_support, matched_estimate.timestamps_ns),
+        distance_coverage=_distance_coverage(reference, matched_reference, evaluable_support),
     )
     return AssociatedTrajectories(
         estimate=matched_estimate,
