@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+
+# Environments
+.venv/
+venv/
+
+# Build outputs
+build/
+dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Benchmark outputs and datasets
+*.lperf/
+results/
+data/
+datasets/
+
+# Local environment
+.env
+.env.*
+!.env.example

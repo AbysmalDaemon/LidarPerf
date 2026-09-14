@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use LidarPerf in research, please cite the archived release or associated paper once available."
+title: "LidarPerf"
+type: software
+authors:
+  - family-names: Dasgupta
+    given-names: Ayush
+version: 0.0.0
+date-released: 2026-09-14
+repository-code: "https://github.com/AbysmalDaemon/LidarPerf"
+license: Apache-2.0
