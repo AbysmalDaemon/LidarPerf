@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved and the first protocol and synthetic-fixture layers are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, and result-bundle integrity layers are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -30,7 +30,8 @@ The package currently includes:
 - reference LO/LIO protocol documents;
 - a deterministic synthetic LiDAR conformance fixture with exact `T_W_B` ground truth;
 - optional deterministic point noise and rolling-scan motion distortion;
-- bitwise fixture golden tests across the supported Python CI matrix.
+- bitwise fixture golden tests across the supported Python CI matrix;
+- versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification.
 
 Estimator execution and real trajectory metrics are **not implemented yet**.
 
@@ -53,11 +54,14 @@ lidarperf --version
 lidarperf protocol validate protocols/lo/se3_v1.yaml
 lidarperf protocol validate protocols/lio/se3_v1.yaml
 lidarperf synthetic generate ./synthetic-fixture --poses 240
+lidarperf verify ./result.lperf
 ```
 
 `protocol validate` parses YAML/JSON with the v0.1 Pydantic schema, rejects unknown or contradictory fields, and prints the canonical SHA-256 protocol fingerprint.
 
-`synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains an exact TUM ground-truth trajectory, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
+`synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains exact `T_W_B` TUM ground truth, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
+
+`verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, trial-count consistency, and SHA-256 payload checksums. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
 
 For example, to exercise point-time semantics and deskew-related tests:
 
