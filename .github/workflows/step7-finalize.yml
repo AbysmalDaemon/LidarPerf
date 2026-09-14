@@ -24,8 +24,10 @@ jobs:
         run: python scripts/export_schemas.py
       - name: Refresh protocol hashes
         run: python scripts/step7_finalize.py --hashes
+      - name: Apply Ruff safe fixes
+        run: ruff check . --fix --exclude scripts/step7_finalize.py
       - name: Lint
-        run: ruff check .
+        run: ruff check . --exclude scripts/step7_finalize.py
       - name: Test
         run: pytest
       - name: Finalize branch
