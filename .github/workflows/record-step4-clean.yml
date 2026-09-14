@@ -1,0 +1,29 @@
+name: Record validated Step 4
+
+on:
+  push:
+    branches:
+      - result-bundles
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: result-bundles
+      - name: Append engineering record
+        run: cat .github/step4-log-fragment.md >> LidarPerf_research_execution_plan.md
+      - name: Remove temporary recording files
+        run: rm .github/step4-log-fragment.md .github/workflows/record-step4-clean.yml
+      - name: Commit engineering record
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'docs: record validated Step 4 implementation'
+          git push
