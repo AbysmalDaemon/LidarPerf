@@ -23,7 +23,7 @@ The project focuses on:
 
 The normative design is in [`SPEC.md`](SPEC.md). The longer research and execution log is maintained in [`LidarPerf_research_execution_plan.md`](LidarPerf_research_execution_plan.md).
 
-The package currently contains only the repository/package foundation. Benchmark execution is **not implemented yet**.
+The package now includes the first protocol/schema implementation: strict protocol validation, canonical protocol fingerprints, and reference LO/LIO protocol documents. Benchmark execution is **not implemented yet**.
 
 ## Planned CLI
 
@@ -41,7 +41,11 @@ For now:
 
 ```bash
 lidarperf --version
+lidarperf protocol validate protocols/lo/se3_v1.yaml
+lidarperf protocol validate protocols/lio/se3_v1.yaml
 ```
+
+`protocol validate` parses YAML/JSON with the v0.1 Pydantic schema, rejects unknown or contradictory fields, and prints the canonical SHA-256 protocol fingerprint.
 
 ## Development
 

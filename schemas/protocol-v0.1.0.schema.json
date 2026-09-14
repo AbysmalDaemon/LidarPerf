@@ -1,0 +1,644 @@
+{
+  "$defs": {
+    "AlignmentMode": {
+      "enum": [
+        "none",
+        "origin",
+        "se3"
+      ],
+      "title": "AlignmentMode",
+      "type": "string"
+    },
+    "CachePolicy": {
+      "enum": [
+        "warm",
+        "cold",
+        "uncontrolled",
+        "not_applicable"
+      ],
+      "title": "CachePolicy",
+      "type": "string"
+    },
+    "EstimatorSemanticsPolicy": {
+      "additionalProperties": false,
+      "description": "Temporal estimator modes permitted by a protocol.",
+      "properties": {
+        "allowed_modes": {
+          "items": {
+            "$ref": "#/$defs/TemporalMode"
+          },
+          "title": "Allowed Modes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_fixed_lag_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Fixed Lag Seconds"
+        }
+      },
+      "required": [
+        "allowed_modes"
+      ],
+      "title": "EstimatorSemanticsPolicy",
+      "type": "object"
+    },
+    "MeasurementClass": {
+      "enum": [
+        "exploratory",
+        "controlled",
+        "publication"
+      ],
+      "title": "MeasurementClass",
+      "type": "string"
+    },
+    "MeasurementPolicy": {
+      "additionalProperties": false,
+      "description": "Authoritative measurement capabilities promised by the protocol.",
+      "properties": {
+        "allowed_classes": {
+          "default": [
+            "exploratory",
+            "controlled",
+            "publication"
+          ],
+          "items": {
+            "$ref": "#/$defs/MeasurementClass"
+          },
+          "title": "Allowed Classes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "cache_policy": {
+          "$ref": "#/$defs/CachePolicy"
+        },
+        "cpu_authoritative": {
+          "default": true,
+          "title": "Cpu Authoritative",
+          "type": "boolean"
+        },
+        "gpu_authoritative": {
+          "default": false,
+          "title": "Gpu Authoritative",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cache_policy"
+      ],
+      "title": "MeasurementPolicy",
+      "type": "object"
+    },
+    "MotionCompensationInputState": {
+      "enum": [
+        "raw",
+        "pre_deskewed",
+        "unknown"
+      ],
+      "title": "MotionCompensationInputState",
+      "type": "string"
+    },
+    "MotionCompensationPolicy": {
+      "additionalProperties": false,
+      "description": "Declared input and ownership semantics for deskew/motion compensation.",
+      "properties": {
+        "input_state": {
+          "$ref": "#/$defs/MotionCompensationInputState"
+        },
+        "motion_source": {
+          "$ref": "#/$defs/MotionSource"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "performed_by": {
+          "$ref": "#/$defs/PreprocessingOwner"
+        }
+      },
+      "required": [
+        "input_state",
+        "performed_by",
+        "motion_source"
+      ],
+      "title": "MotionCompensationPolicy",
+      "type": "object"
+    },
+    "MotionSource": {
+      "enum": [
+        "none",
+        "constant_velocity",
+        "imu",
+        "other"
+      ],
+      "title": "MotionSource",
+      "type": "string"
+    },
+    "PoseConvention": {
+      "additionalProperties": false,
+      "description": "Canonical pose representation required by SPEC.md section 11.",
+      "properties": {
+        "handedness": {
+          "const": "right",
+          "default": "right",
+          "title": "Handedness",
+          "type": "string"
+        },
+        "quaternion_order": {
+          "const": "xyzw",
+          "default": "xyzw",
+          "title": "Quaternion Order",
+          "type": "string"
+        },
+        "timestamp_unit": {
+          "const": "int64_ns",
+          "default": "int64_ns",
+          "title": "Timestamp Unit",
+          "type": "string"
+        },
+        "transform": {
+          "const": "T_W_B",
+          "default": "T_W_B",
+          "title": "Transform",
+          "type": "string"
+        },
+        "translation_unit": {
+          "const": "metre",
+          "default": "metre",
+          "title": "Translation Unit",
+          "type": "string"
+        }
+      },
+      "title": "PoseConvention",
+      "type": "object"
+    },
+    "PreprocessingOperation": {
+      "additionalProperties": false,
+      "description": "Ownership and explicit parameters for a material preprocessing stage.",
+      "properties": {
+        "owner": {
+          "$ref": "#/$defs/PreprocessingOwner"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "owner"
+      ],
+      "title": "PreprocessingOperation",
+      "type": "object"
+    },
+    "PreprocessingOwner": {
+      "enum": [
+        "dataset",
+        "benchmark",
+        "algorithm",
+        "none"
+      ],
+      "title": "PreprocessingOwner",
+      "type": "string"
+    },
+    "PreprocessingPolicy": {
+      "additionalProperties": false,
+      "description": "Protocol-visible preprocessing ownership declarations.",
+      "properties": {
+        "coordinate_transform": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "crop": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "duplicate_removal": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "ground_removal": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "intensity_filter": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "motion_compensation": {
+          "$ref": "#/$defs/MotionCompensationPolicy"
+        },
+        "outlier_filter": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "point_reordering": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "range_filter": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "timestamp_reconstruction": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        },
+        "voxel_downsample": {
+          "$ref": "#/$defs/PreprocessingOperation"
+        }
+      },
+      "required": [
+        "coordinate_transform",
+        "motion_compensation",
+        "voxel_downsample",
+        "crop",
+        "range_filter",
+        "outlier_filter",
+        "ground_removal",
+        "intensity_filter",
+        "timestamp_reconstruction",
+        "point_reordering",
+        "duplicate_removal"
+      ],
+      "title": "PreprocessingPolicy",
+      "type": "object"
+    },
+    "ProtocolIdentity": {
+      "additionalProperties": false,
+      "description": "Human-readable identity of an immutable released protocol.",
+      "properties": {
+        "id": {
+          "pattern": "^lidarperf/[a-z0-9][a-z0-9._/-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "ProtocolIdentity",
+      "type": "object"
+    },
+    "RelativeErrorWindow": {
+      "additionalProperties": false,
+      "description": "Distance window requested for relative trajectory error.",
+      "properties": {
+        "distance_m": {
+          "exclusiveMinimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_m"
+      ],
+      "title": "RelativeErrorWindow",
+      "type": "object"
+    },
+    "RepetitionPolicy": {
+      "additionalProperties": false,
+      "description": "Minimum repetition evidence for different measurement classes.",
+      "properties": {
+        "controlled_min_trials": {
+          "default": 5,
+          "minimum": 1,
+          "title": "Controlled Min Trials",
+          "type": "integer"
+        },
+        "exploratory_min_trials": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Exploratory Min Trials",
+          "type": "integer"
+        },
+        "publication_min_trials": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Publication Min Trials",
+          "type": "integer"
+        },
+        "warmup_trials": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Warmup Trials",
+          "type": "integer"
+        }
+      },
+      "title": "RepetitionPolicy",
+      "type": "object"
+    },
+    "Sensor": {
+      "enum": [
+        "lidar",
+        "imu",
+        "camera",
+        "wheel_odometry",
+        "gnss",
+        "magnetometer",
+        "external_localization",
+        "prebuilt_map",
+        "ground_truth",
+        "precomputed_motion"
+      ],
+      "title": "Sensor",
+      "type": "string"
+    },
+    "SensorPolicy": {
+      "additionalProperties": false,
+      "description": "Runtime sensor/information policy for an estimator track.",
+      "properties": {
+        "forbidden": {
+          "items": {
+            "$ref": "#/$defs/Sensor"
+          },
+          "title": "Forbidden",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "optional": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Sensor"
+          },
+          "title": "Optional",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required": {
+          "items": {
+            "$ref": "#/$defs/Sensor"
+          },
+          "title": "Required",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "required",
+        "forbidden"
+      ],
+      "title": "SensorPolicy",
+      "type": "object"
+    },
+    "TemporalMode": {
+      "enum": [
+        "online_causal",
+        "online_fixed_lag",
+        "offline_noncausal"
+      ],
+      "title": "TemporalMode",
+      "type": "string"
+    },
+    "TimestampAssociation": {
+      "additionalProperties": false,
+      "description": "Explicit estimator/reference timestamp association semantics.",
+      "properties": {
+        "max_reference_gap_ns": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Reference Gap Ns"
+        },
+        "max_time_delta_ns": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Time Delta Ns"
+        },
+        "mode": {
+          "$ref": "#/$defs/TimestampAssociationMode"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "TimestampAssociation",
+      "type": "object"
+    },
+    "TimestampAssociationMode": {
+      "enum": [
+        "exact",
+        "nearest",
+        "interpolate_reference"
+      ],
+      "title": "TimestampAssociationMode",
+      "type": "string"
+    },
+    "TimingPolicy": {
+      "additionalProperties": false,
+      "description": "Timing boundary and clock requirements.",
+      "properties": {
+        "clock": {
+          "const": "monotonic",
+          "default": "monotonic",
+          "title": "Clock",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/TimingScope"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "title": "TimingPolicy",
+      "type": "object"
+    },
+    "TimingScope": {
+      "enum": [
+        "compute",
+        "pipeline",
+        "end_to_end"
+      ],
+      "title": "TimingScope",
+      "type": "string"
+    },
+    "Track": {
+      "enum": [
+        "lo",
+        "lio"
+      ],
+      "title": "Track",
+      "type": "string"
+    },
+    "TrajectoryPolicy": {
+      "additionalProperties": false,
+      "description": "Pose, association, alignment, and metric semantics.",
+      "properties": {
+        "alignment": {
+          "$ref": "#/$defs/AlignmentMode"
+        },
+        "ape_rotation": {
+          "default": true,
+          "title": "Ape Rotation",
+          "type": "boolean"
+        },
+        "ape_translation": {
+          "default": true,
+          "title": "Ape Translation",
+          "type": "boolean"
+        },
+        "association": {
+          "$ref": "#/$defs/TimestampAssociation"
+        },
+        "evaluation_frame": {
+          "minLength": 1,
+          "title": "Evaluation Frame",
+          "type": "string"
+        },
+        "pose": {
+          "$ref": "#/$defs/PoseConvention"
+        },
+        "relative_error_windows": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RelativeErrorWindow"
+          },
+          "title": "Relative Error Windows",
+          "type": "array"
+        },
+        "scale_correction": {
+          "default": false,
+          "title": "Scale Correction",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evaluation_frame",
+        "association",
+        "alignment"
+      ],
+      "title": "TrajectoryPolicy",
+      "type": "object"
+    },
+    "TuningClass": {
+      "enum": [
+        "frozen",
+        "dataset",
+        "sequence"
+      ],
+      "title": "TuningClass",
+      "type": "string"
+    },
+    "TuningPolicy": {
+      "additionalProperties": false,
+      "description": "Allowed tuning granularity for runs under the protocol.",
+      "properties": {
+        "allowed_classes": {
+          "default": [
+            "frozen",
+            "dataset",
+            "sequence"
+          ],
+          "items": {
+            "$ref": "#/$defs/TuningClass"
+          },
+          "title": "Allowed Classes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "preferred_class": {
+          "$ref": "#/$defs/TuningClass",
+          "default": "frozen"
+        }
+      },
+      "title": "TuningPolicy",
+      "type": "object"
+    },
+    "ValidityPolicy": {
+      "additionalProperties": false,
+      "description": "Minimum structural validity required before accuracy/performance claims.",
+      "properties": {
+        "finite_poses_required": {
+          "default": true,
+          "title": "Finite Poses Required",
+          "type": "boolean"
+        },
+        "successful_process_exit_required": {
+          "default": true,
+          "title": "Successful Process Exit Required",
+          "type": "boolean"
+        },
+        "temporal_coverage_min": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Temporal Coverage Min",
+          "type": "number"
+        }
+      },
+      "required": [
+        "temporal_coverage_min"
+      ],
+      "title": "ValidityPolicy",
+      "type": "object"
+    },
+    "JsonValue": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "integer"},
+        {"type": "boolean"},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/JsonValue"}},
+        {"type": "array", "items": {"$ref": "#/$defs/JsonValue"}},
+        {"type": "null"}
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "description": "Fully explicit v0.1 LidarPerf protocol document.",
+  "properties": {
+    "estimator_semantics": {"$ref": "#/$defs/EstimatorSemanticsPolicy"},
+    "measurement": {"$ref": "#/$defs/MeasurementPolicy"},
+    "preprocessing": {"$ref": "#/$defs/PreprocessingPolicy"},
+    "protocol": {"$ref": "#/$defs/ProtocolIdentity"},
+    "repetition": {"$ref": "#/$defs/RepetitionPolicy"},
+    "sensors": {"$ref": "#/$defs/SensorPolicy"},
+    "spec_version": {"const": "0.1.0", "title": "Spec Version", "type": "string"},
+    "timing": {"$ref": "#/$defs/TimingPolicy"},
+    "track": {"$ref": "#/$defs/Track"},
+    "trajectory": {"$ref": "#/$defs/TrajectoryPolicy"},
+    "tuning": {"$ref": "#/$defs/TuningPolicy"},
+    "validity": {"$ref": "#/$defs/ValidityPolicy"}
+  },
+  "required": [
+    "spec_version",
+    "protocol",
+    "track",
+    "sensors",
+    "estimator_semantics",
+    "trajectory",
+    "preprocessing",
+    "timing",
+    "validity",
+    "repetition",
+    "measurement",
+    "tuning"
+  ],
+  "title": "BenchmarkProtocol",
+  "type": "object"
+}
