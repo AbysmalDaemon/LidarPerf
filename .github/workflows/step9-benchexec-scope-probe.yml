@@ -14,7 +14,10 @@ jobs:
           sudo add-apt-repository -y ppa:sosy-lab/benchmarking
           sudo apt-get update
           sudo apt-get install -y benchexec
-      - name: Verify inside delegated systemd scope
+      - name: Repair hosted-runner cpuset delegation and verify scope
         run: |
+          uid="$(id -u)"
+          parent="/sys/fs/cgroup/user.slice/user-${uid}.slice/user@${uid}.service/cgroup.subtree_control"
+          echo +cpuset | sudo tee "$parent"
           systemd-run --user --scope --slice=benchexec -p Delegate=yes \
             bash -lc 'python3 -m benchexec.check_cgroups && runexec --no-container --output /tmp/probe.log -- /bin/true && cat /tmp/probe.log'
