@@ -16,8 +16,8 @@ from lidarperf.backends import (
     ResourceLimits,
 )
 from lidarperf.bundle import DatasetFingerprintClass, DatasetRecord, VerificationStatus
-from lidarperf.runset import run_evalio_repeated_benchmark
 from lidarperf.runner import BenchmarkRunError
+from lidarperf.runset import run_evalio_repeated_benchmark
 from lidarperf.spec.enums import MeasurementClass
 from lidarperf.trajectory import evaluate_trajectory, parse_tum
 

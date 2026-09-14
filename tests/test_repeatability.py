@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from lidarperf.repeatability import scalar_distributions, summarize_scalars, trajectory_repeatability
+from lidarperf.repeatability import (
+    scalar_distributions,
+    summarize_scalars,
+    trajectory_repeatability,
+)
 from lidarperf.trajectory import Trajectory
 
 

@@ -250,7 +250,8 @@ def run_evalio_repeated_benchmark(
         "backend_version": first_execution.backend_version,
         "command_argv": list(first_command.argv),
         "command_argv_scope": (
-            "representative first measured trial; exact argv is stored in every trial resources record"
+            "representative first measured trial; exact argv is stored in every "
+            "trial resources record"
         ),
         "timing_scope": protocol.timing.scope.value,
         "warmup_trials": warmup_count,
