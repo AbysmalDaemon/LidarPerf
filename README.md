@@ -47,6 +47,17 @@ lidarperf protocol validate protocols/lio/se3_v1.yaml
 
 `protocol validate` parses YAML/JSON with the v0.1 Pydantic schema, rejects unknown or contradictory fields, and prints the canonical SHA-256 protocol fingerprint.
 
+### Built-in protocol identities
+
+The current reference documents resolve to:
+
+```text
+lidarperf/lo-se3@1   d3f93d00b1958433d0f9b7093810d840a8cd41cd323e27957563531f29da8703
+lidarperf/lio-se3@1  b4bcef011bb82e9368edebfba8263b0cc41c6e5de91add0b7db1d847a6c40c41
+```
+
+These hashes identify the fully resolved protocol content. A semantic protocol change must produce a different content hash and, once a protocol is released, a new protocol version rather than silently changing the old definition.
+
 ## Development
 
 Python 3.11+ is required.
