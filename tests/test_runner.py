@@ -171,7 +171,10 @@ def test_controlled_run_refuses_unready_benchexec(tmp_path: Path) -> None:
 
 
 def test_publication_class_requires_repeated_run_phase(tmp_path: Path) -> None:
-    with pytest.raises(BenchmarkRunError, match="publication-class evidence requires repeated trials"):
+    with pytest.raises(
+        BenchmarkRunError,
+        match="publication-class evidence requires repeated trials",
+    ):
         run_evalio_benchmark(
             protocol_path="protocols/lo/se3_v1.yaml",
             dataset="example/sequence",
