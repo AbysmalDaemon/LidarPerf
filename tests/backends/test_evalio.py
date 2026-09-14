@@ -88,7 +88,7 @@ def test_evalio_csv_can_flow_into_lidarperf_metrics() -> None:
     text = """# timestamp, x, y, z, qx, qy, qz, qw
 0.000000000,0,0,0,0,0,0,1
 1.000000000,1,0,0,0,0,0,1
-2.000000000,2,0,0,0,0,0,1
+2.000000000,1,1,0,0,0,0,1
 """
     estimate = parse_evalio_trajectory(text)
     reference = parse_evalio_trajectory(text)
