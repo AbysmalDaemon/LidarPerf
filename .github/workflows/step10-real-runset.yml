@@ -1,8 +1,7 @@
 name: Step 10 real repeated LidarPerf bundle
 
 on:
-  push:
-    branches: [step10-repeated-runs]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,10 +11,11 @@ env:
 
 jobs:
   real-runset:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: step10-repeated-runs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
