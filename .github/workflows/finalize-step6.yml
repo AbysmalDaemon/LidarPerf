@@ -13,80 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Append Step 6 engineering log
+        shell: python
         run: |
-          cat <<'EOF' >> LidarPerf_research_execution_plan.md
-
----
-
-## Project execution log — 2026-09-14 — Step 6 BenchExec execution backend
-
-**Status:** implementation complete on `benchexec-backend`; pre-PR validation passed. PR review and the repository's normal Python 3.11/3.12/3.13 CI matrix are the remaining merge gates.
-
-### Goal
-
-Implement the controlled Linux process-execution layer without writing a custom process monitor. LidarPerf delegates process-tree timing and resource accounting to BenchExec/`runexec`, then normalizes the results into stable LidarPerf records.
-
-### Work completed
-
-Step 6 now provides:
-
-- `CommandSpec`, `ResourceLimits`, `ExecutionMeasurements`, `CommandExecutionResult`, and `BenchExecCapability` versioned models;
-- direct argv execution through `runexec` without shell interpolation;
-- process-tree wall-time and CPU-time capture;
-- peak-memory capture when BenchExec exposes memory accounting;
-- CPU-time, wall-time, memory, CPU-core, and NUMA-node limits;
-- child return-value, signal, timeout, and BenchExec termination-reason normalization;
-- explicit refusal to overwrite an existing process-output log;
-- backend-version capture;
-- compact diagnostics when `runexec` cannot provide required measurements;
-- an active `probe_capability()` check that performs a tiny real execution instead of assuming that an installed binary implies controlled-benchmark readiness;
-- an optional `benchmark` dependency group using BenchExec 3.x;
-- verifier support for either a combined `process.log` or a genuine `stdout.log` + `stderr.log` pair;
-- SPEC and README documentation for the execution-log contract and controlled-host requirements.
-
-The backend defaults to `--no-container`. BenchExec is being used here for process accounting and resource control; software-container semantics remain a separate planned Docker backend.
-
-### Important design decision: combined process logs
-
-`runexec --output` combines the benchmarked command's stdout and stderr. LidarPerf must not falsely relabel that stream as stdout or fabricate an empty stderr file. The result-bundle contract therefore now accepts exactly one of:
-
-- `process.log`; or
-- both `stdout.log` and `stderr.log`.
-
-Declaring both layouts is invalid.
-
-### Controlled-readiness semantics
-
-Finding `runexec` on `PATH` is not sufficient evidence that a host can produce controlled measurements. `BenchExecBackend.probe_capability()` runs a tiny process and requires wall time, CPU time, and process-tree memory accounting before reporting `controlled_ready=true`.
-
-This matters because ordinary GitHub-hosted runners currently expose the BenchExec executable but do not grant the delegated cgroups required for authoritative CPU/memory accounting. Such runners remain useful for package, parser, and synthetic tests, but not for benchmark-grade runtime claims.
-
-### Dependency decision
-
-The portable `benchmark` extra installs `benchexec>=3.31,<4` rather than forcing `benchexec[systemd]`. The latter pulls `pystemd`, whose source build requires `libsystemd` development metadata on systems without a compatible wheel. Controlled benchmark hosts should instead use their distribution's recommended BenchExec setup, install the optional systemd integration with its system prerequisites, or enter an explicitly delegated systemd scope.
-
-### Validation
-
-The final temporary pre-PR validation on Ubuntu 24.04 / Python 3.13 completed successfully with:
-
-- BenchExec package smoke: PASS (`runexec 3.35`)
-- Ruff: PASS
-- pytest: PASS (`87 passed`)
-
-The repository's normal pull-request matrix remains the authoritative cross-version gate for Python 3.11, 3.12, and 3.13.
-
-### Errors, failed approaches, and learnings
-
-1. **Real `runexec` on a GitHub-hosted runner failed because delegated cgroups were unavailable.** This was initially treated as a smoke-test failure. It is actually an environment-capability result. Corrective action: keep hosted CI for unit/package tests and add an explicit active capability probe for controlled hosts.
-2. **The benchmark extra was temporarily changed to `benchexec[systemd]`.** On the hosted runner, `pystemd` attempted a source build and failed because `libsystemd.pc` was unavailable. Corrective action: return the package extra to portable BenchExec and document systemd integration as a host-setup concern rather than an unconditional Python dependency.
-3. **The original result-bundle schema required separate stdout/stderr logs.** BenchExec's real API exposes one combined output file. Corrective action: amend the specification and verifier to preserve the actual measurement semantics with `process.log` instead of manufacturing false stream separation.
-4. **Old transfer corruption was discovered in the remotely published `SPEC.md`.** Several Markdown fences/words had been damaged during an earlier file-transfer path. Multiple hash-driven repair attempts were too brittle and produced unnecessary failed CI runs. Corrective action: use semantic invariant checks for the known corruption and the Step 6 amendment, repair the document successfully, and remove the temporary repair workflow. Learning: verify large transferred artifacts immediately after publication and do not use a whole-file hash as the only repair criterion when the intended semantic changes are known.
-5. **One new verifier test over-specified an error code.** Deleting a physically present-but-declared log correctly produced `INVENTORY_MISSING` and `PAYLOAD_MISSING`; the test additionally demanded `TRIAL_LOG_MISSING`, even though log-layout validation intentionally operates on the declared artifact shape. Corrective action: retain the precise inventory/checksum errors and keep layout validation for mutually exclusive/declared log layouts.
-
-### Next action
-
-Open PR #6 for Step 6, require the normal repository CI matrix to pass, review the diff once, and merge. After merge, Step 7 is trajectory representation and structural validation.
-EOF
+          from base64 import b64decode
+          from pathlib import Path
+          payload = "CgotLS0KCiMjIFByb2plY3QgZXhlY3V0aW9uIGxvZyDigJQgMjAyNi0wOS0xNCDigJQgU3RlcCA2IEJlbmNoRXhlYyBleGVjdXRpb24gYmFja2VuZAoKKipTdGF0dXM6KiogaW1wbGVtZW50YXRpb24gY29tcGxldGUgb24gYGJlbmNoZXhlYy1iYWNrZW5kYDsgcHJlLVBSIHZhbGlkYXRpb24gcGFzc2VkLiBQUiByZXZpZXcgYW5kIHRoZSByZXBvc2l0b3J5J3Mgbm9ybWFsIFB5dGhvbiAzLjExLzMuMTIvMy4xMyBDSSBtYXRyaXggYXJlIHRoZSByZW1haW5pbmcgbWVyZ2UgZ2F0ZXMuCgojIyMgR29hbAoKSW1wbGVtZW50IHRoZSBjb250cm9sbGVkIExpbnV4IHByb2Nlc3MtZXhlY3V0aW9uIGxheWVyIHdpdGhvdXQgd3JpdGluZyBhIGN1c3RvbSBwcm9jZXNzIG1vbml0b3IuIExpZGFyUGVyZiBkZWxlZ2F0ZXMgcHJvY2Vzcy10cmVlIHRpbWluZyBhbmQgcmVzb3VyY2UgYWNjb3VudGluZyB0byBCZW5jaEV4ZWMvYHJ1bmV4ZWNgLCB0aGVuIG5vcm1hbGl6ZXMgdGhlIHJlc3VsdHMgaW50byBzdGFibGUgTGlkYXJQZXJmIHJlY29yZHMuCgojIyMgV29yayBjb21wbGV0ZWQKClN0ZXAgNiBub3cgcHJvdmlkZXM6CgotiGBdIGBDb21tYW5kU3BlY2AsIGBSZXNvdXJjZUxpbWl0c2AsIGBFeGVjdXRpb25NZWFzdXJlbWVudHNgLCBgQ29tbWFuZEV4ZWN1dGlvblJlc3VsdGAsIGFuZCBgQmVuY2hFeGVjQ2FwYWJpbGl0eWAgdmVyc2lvbmVkIG1vZGVsczsKLSBkaXJlY3QgYXJndiBleGVjdXRpb24gdGhyb3VnaCBgcnVuZXhlY2Agd2l0aG91dCBzaGVsbCBpbnRlcnBvbGF0aW9uOwotIHByb2Nlc3MtdHJlZSB3YWxsLXRpbWUgYW5kIENQVS10aW1lIGNhcHR1cmU7Ci0gcGVhay1tZW1vcnkgY2FwdHVyZSB3aGVuIEJlbmNoRXhlYyBleHBvc2VzIG1lbW9yeSBhY2NvdW50aW5nOwotIENQVS10aW1lLCB3YWxsLXRpbWUsIG1lbW9yeSwgQ1BVLWNvcmUsIGFuZCBOVU1BLW5vZGUgbGltaXRzOwotIGNoaWxkIHJldHVybi12YWx1ZSwgc2lnbmFsLCB0aW1lb3V0LCBhbmQgQmVuY2hFeGVjIHRlcm1pbmF0aW9uLXJlYXNvbiBub3JtYWxpemF0aW9uOwotIGV4cGxpY2l0IHJlZnVzYWwgdG8gb3ZlcndyaXRlIGFuIGV4aXN0aW5nIHByb2Nlc3Mtb3V0cHV0IGxvZzsKLSBiYWNrZW5kLXZlcnNpb24gY2FwdHVyZTsKLSBjb21wYWN0IGRpYWdub3N0aWNzIHdoZW4gYHJ1bmV4ZWNgIGNhbm5vdCBwcm92aWRlIHJlcXVpcmVkIG1lYXN1cmVtZW50czsKLSBhbiBhY3RpdmUgYHByb2JlX2NhcGFiaWxpdHkoKWAgY2hlY2sgdGhhdCBwZXJmb3JtcyBhIHRpbnkgcmVhbCBleGVjdXRpb24gaW5zdGVhZCBvZiBhc3N1bWluZyB0aGF0IGFuIGluc3RhbGxlZCBiaW5hcnkgaW1wbGllcyBjb250cm9sbGVkLWJlbmNobWFyayByZWFkaW5lc3M7Ci0gYW4gb3B0aW9uYWwgYGJlbmNobWFya2AgZGVwZW5kZW5jeSBncm91cCB1c2luZyBCZW5jaEV4ZWMgMy54OwotIHZlcmlmaWVyIHN1cHBvcnQgZm9yIGVpdGhlciBhIGNvbWJpbmVkIGBwcm9jZXNzLmxvZ2Agb3IgYSBnZW51aW5lIGBzdGRvdXQubG9nYCArIGBzdGRlcnIubG9nYCBwYWlyOwotIFNQRUMgYW5kIFJFQURNRSBkb2N1bWVudGF0aW9uIGZvciB0aGUgZXhlY3V0aW9uLWxvZyBjb250cmFjdCBhbmQgY29udHJvbGxlZC1ob3N0IHJlcXVpcmVtZW50cy4KClRoZSBiYWNrZW5kIGRlZmF1bHRzIHRvIGAtLW5vLWNvbnRhaW5lcmAuIEJlbmNoRXhlYyBpcyBiZWluZyB1c2VkIGhlcmUgZm9yIHByb2Nlc3MgYWNjb3VudGluZyBhbmQgcmVzb3VyY2UgY29udHJvbDsgc29mdHdhcmUtY29udGFpbmVyIHNlbWFudGljcyByZW1haW4gYSBzZXBhcmF0ZSBwbGFubmVkIERvY2tlciBiYWNrZW5kLgoKIyMjIEltcG9ydGFudCBkZXNpZ24gZGVjaXNpb246IGNvbWJpbmVkIHByb2Nlc3MgbG9ncwoKYHJ1bmV4ZWMgLS1vdXRwdXRgIGNvbWJpbmVzIHRoZSBiZW5jaG1hcmtlZCBjb21tYW5kJ3Mgc3Rkb3V0IGFuZCBzdGRlcnIuIExpZGFyUGVyZiBtdXN0IG5vdCBmYWxzZWx5IHJlbGFiZWwgdGhhdCBzdHJlYW0gYXMgc3Rkb3V0IG9yIGZhYnJpY2F0ZSBhbiBlbXB0eSBzdGRlcnIgZmlsZS4gVGhlIHJlc3VsdC1idW5kbGUgY29udHJhY3QgdGhlcmVmb3JlIG5vdyBhY2NlcHRzIGV4YWN0bHkgb25lIG9mOgoKLSBgcHJvY2Vzcy5sb2dgOyBvcgotIGJvdGggYHN0ZG91dC5sb2dgIGFuZCBgc3RkZXJyLmxvZ2AuCgpEZWNsYXJpbmcgYm90aCBsYXlvdXRzIGlzIGludmFsaWQuCgojIyMgQ29udHJvbGxlZC1yZWFkaW5lc3Mgc2VtYW50aWNzCgpGaW5kaW5nIGBydW5leGVjYCBvbiBgUEFUSGAgcyBub3Qgc3VmZmljaWVudCBldmlkZW5jZSB0aGF0IGEgaG9zdCBjYW4gcHJvZHVjZSBjb250cm9sbGVkIG1lYXN1cmVtZW50cy4gYEJlbmNoRXhlY0JhY2tlbmQucHJvYmVfY2FwYWJpbGl0eSgpYCBydW5zIGEgdGlueSBwcm9jZXNzIGFuZCByZXF1aXJlcyB3YWxsIHRpbWUsIENQVSB0aW1lLCBhbmQgcHJvY2Vzcy10cmVlIG1lbW9yeSBhY2NvdW50aW5nIGJlZm9yZSByZXBvcnRpbmcgYGNvbnRyb2xsZWRfcmVhZHk9dHJ1ZWAuCgpUaGlzIG1hdHRlcnMgYmVjYXVzZSBvcmRpbmFyeSBHaXRIdWItaG9zdGVkIHJ1bm5lcnMgY3VycmVudGx5IGV4cG9zZSB0aGUgQmVuY2hFeGVjIGV4ZWN1dGFibGUgYnV0IGRvIG5vdCBncmFudCB0aGUgZGVsZWdhdGVkIGNncm91cHMgcmVxdWlyZWQgZm9yIGF1dGhvcml0YXRpdmUgQ1BVL21lbW9yeSBhY2NvdW50aW5nLiBTdWNoIHJ1bm5lcnMgcmVtYWluIHVzZWZ1bCBmb3IgcGFja2FnZSwgcGFyc2VyLCBhbmQgc3ludGhldGljIHRlc3RzLCBidXQgbm90IGZvciBiZW5jaG1hcmstZ3JhZGUgcnVudGltZSBjbGFpbXMuCgojIyMgRGVwZW5kZW5jeSBkZWNpc2lvbgoKVGhlIHBvcnRhYmxlIGBiZW5jaG1hcmtgIGV4dHJhIGluc3RhbGxzIGBiZW5jaGV4ZWM+PTMuMzEsPDRgIHJhdGhlciB0aGFuIGZvcmNpbmcgYGJlbmNoZXhlY1tzeXN0ZW1kXWAuIFRoZSBsYXR0ZXIgcHVsbHMgYHB5c3RlbWRgLCB3aG9zZSBzb3VyY2UgYnVpbGQgcmVxdWlyZXMgYGxpYnN5c3RlbWRgIGRldmVsb3BtZW50IG1ldGFkYXRhIG9uIHN5c3RlbXMgd2l0aG91dCBhIGNvbXBhdGlibGUgd2hlZWwuIENvbnRyb2xsZWQgYmVuY2htYXJrIGhvc3RzIHNob3VsZCBpbnN0ZWFkIHVzZSB0aGVpciBkaXN0cmlidXRpb24ncyByZWNvbW1lbmRlZCBCZW5jaEV4ZWMgc2V0dXAsIGluc3RhbGwgdGhlIG9wdGlvbmFsIHN5c3RlbWQgaW50ZWdyYXRpb24gd2l0aCBpdHMgc3lzdGVtIHByZXJlcXVpc2l0ZXMsIG9yIGVudGVyIGFuIGV4cGxpY2l0bHkgZGVsZWdhdGVkIHN5c3RlbWQgc2NvcGUuCgojIyMgVmFsaWRhdGlvbgoKVGhlIGZpbmFsIHRlbXBvcmFyeSBwcmUtUFIgdmFsaWRhdGlvbiBvbiBVYnVudHUgMjQuMDQgLyBQeXRob24gMy4xMyBjb21wbGV0ZWQgc3VjY2Vzc2Z1bGx5IHdpdGg6CgogLSBCZW5jaEV4ZWMgcGFja2FnZSBzbW9rZTogUEFTUyAoYHJ1bmV4ZWMgMy4zNWApCi0gUnVmZjogUEFTUwotIHB5dGVzdDogUEFTUyAoYDg3IHBhc3NlZGApCgpUaGUgcmVwb3NpdG9yeSdzIG5vcm1hbCBwdWxsLXJlcXVlc3QgbWF0cml4IHJlbWFpbnMgdGhlIGF1dGhvcml0YXRpdmUgY3Jvc3MtdmVyc2lvbiBnYXRlIGZvciBQeXRob24gMy4xMSwgMy4xMiwgYW5kIDMuMTMuCgojIyMgRXJyb3JzLCBmYWlsZWQgYXBwcm9hY2hlcywgYW5kIGxlYXJuaW5ncwoKMS4gKipSZWFsIGBydW5leGVjYCBvbiBhIEdpdEh1Yi1ob3N0ZWQgcnVubmVyIGZhaWxlZCBiZWNhdXNlIGRlbGVnYXRlZCBjZ3JvdXBzIHdlcmUgdW5hdmFpbGFibGUuKiogVGhpcyB3YXMgaW5pdGlhbGx5IHRyZWF0ZWQgYXMgYSBzbW9rZS10ZXN0IGZhaWx1cmUuIEl0IGlzIGFjdHVhbGx5IGFuIGVudmlyb25tZW50LWNhcGFiaWxpdHkgcmVzdWx0LiBDb3JyZWN0aXZlIGFjdGlvbjoga2VlcCBob3N0ZWQgQ0kgZm9yIHVuaXQvcGFja2FnZSB0ZXN0cyBhbmQgYWRkIGFuIGV4cGxpY2l0IGFjdGl2ZSBjYXBhYmlsaXR5IHByb2JlIGZvciBjb250cm9sbGVkIGhvc3RzLgoKMi4gKipUaGUgYmVuY2htYXJrIGV4dHJhIHdhcyB0ZW1wb3JhcmlseSBjaGFuZ2VkIHRvIGBiZW5jaGV4ZWNbc3lzdGVtZF1gLioqIE9uIHRoZSBob3N0ZWQgcnVubmVyLCBgcHlzdGVtZGAgYXR0ZW1wdGVkIGEgc291cmNlIGJ1aWxkIGFuZCBmYWlsZWQgYmVjYXVzZSBgbGlic3lzdGVtZC5wY2Agd2FzIHVuYXZhaWxhYmxlLiBDb3JyZWN0aXZlIGFjdGlvbjogcmV0dXJuIHRoZSBwYWNrYWdlIGV4dHJhIHRvIHBvcnRhYmxlIEJlbmNoRXhlYyBhbmQgZG9jdW1lbnQgc3lzdGVtZCBpbnRlZ3JhdGlvbiBhcyBhIGhvc3Qtc2V0dXAgY29uY2VybiByYXRoZXIgdGhhbiBhbiB1bmNvbmRpdGlvbmFsIFB5dGhvbiBkZXBlbmRlbmN5LgoKMy4gKipUaGUgb3JpZ2luYWwgcmVzdWx0LWJ1bmRsZSBzY2hlbWEgcmVxdWlyZWQgc2VwYXJhdGUgc3Rkb3V0L3N0ZGVyciBsb2dzLioqIEJlbmNoRXhlYydzIHJlYWwgQVBJIGV4cG9zZXMgb25lIGNvbWJpbmVkIG91dHB1dCBmaWxlLiBDb3JyZWN0aXZlIGFjdGlvbjogYW1lbmQgdGhlIHNwZWNpZmljYXRpb24gYW5kIHZlcmlmaWVyIHRvIHByZXNlcnZlIHRoZSBhY3R1YWwgbWVhc3VyZW1lbnQgc2VtYW50aWNzIHdpdGggYHByb2Nlc3MubG9nYCBpbnN0ZWFkIG9mIG1hbnVmYWN0dXJpbmcgZmFsc2Ugc3RyZWFtIHNlcGFyYXRpb24uCgo0LiAqKk9sZCB0cmFuc2ZlciBjb3JydXB0aW9uIHdhcyBkaXNjb3ZlcmVkIGluIHRoZSByZW1vdGVseSBwdWJsaXNoZWQgYFNQRUMubWRgLioqIFNldmVyYWwgTWFya2Rvd24gZmVuY2VzL3dvcmRzIGhhZCBiZWVuIGRhbWFnZWQgZHVyaW5nIGFuIGVhcmxpZXIgZmlsZS10cmFuc2ZlciBwYXRoLiBNdWx0aXBsZSBoYXNoLWRyaXZlbiByZXBhaXIgYXR0ZW1wdHMgd2VyZSB0b28gYnJpdHRsZSBhbmQgcHJvZHVjZWQgdW5uZWNlc3NhcnkgZmFpbGVkIENJIHJ1bnMuIENvcnJlY3RpdmUgYWN0aW9uOiB1c2Ugc2VtYW50aWMgaW52YXJpYW50IGNoZWNrcyBmb3IgdGhlIGtub3duIGNvcnJ1cHRpb24gYW5kIHRoZSBTdGVwIDYgYW1lbmRtZW50LCByZXBhaXIgdGhlIGRvY3VtZW50IHN1Y2Nlc3NmdWxseSwgYW5kIHJlbW92ZSB0aGUgdGVtcG9yYXJ5IHJlcGFpciB3b3JrZmxvdy4gTGVhcm5pbmc6IHZlcmlmeSBsYXJnZSB0cmFuc2ZlcnJlZCBhcnRpZmFjdHMgaW1tZWRpYXRlbHkgYWZ0ZXIgcHVibGljYXRpb24gYW5kIGRvIG5vdCB1c2UgYSB3aG9sZS1maWxlIGhhc2ggYXMgdGhlIG9ubHkgcmVwYWlyIGNyaXRlcmlvbiB3aGVuIHRoZSBpbnRlbmRlZCBzZW1hbnRpYyBjaGFuZ2VzIGFyZSBrbm93bi4KCjUuICoqT25lIG5ldyB2ZXJpZmllciB0ZXN0IG92ZXItc3BlY2lmaWVkIGFuIGVycm9yIGNvZGUuKiogRGVsZXRpbmcgYSBwaHlzaWNhbGx5IHByZXNlbnQtYnV0LWRlY2xhcmVkIGxvZyBjb3JyZWN0bHkgcHJvZHVjZWQgYElOVkVOVE9SWV9NSVNTSU5HYCBhbmQgYFBBWUxPQURfTUlTU0lOR2A7IHRoZSB0ZXN0IGFkZGl0aW9uYWxseSBkZW1hbmRlZCBgVFJJQUxfTE9HX01JU1NJTkNgLCBldmVuIHRob3VnaCBsb2ctbGF5b3V0IHZhbGlkYXRpb24gaW50ZW50aW9uYWxseSBvcGVyYXRlcyBvbiB0aGUgZGVjbGFyZWQgYXJ0aWZhY3Qgc2hhcGUuIENvcnJlY3RpdmUgYWN0aW9uOiByZXRhaW4gdGhlIHByZWNpc2UgaW52ZW50b3J5L2NoZWNrc3VtIGVycm9ycyBhbmQga2VlcCBsYXlvdXQgdmFsaWRhdGlvbiBmb3IgbXV0dWFsbHkgZXhjbHVzaXZlL2RlY2xhcmVkIGxvZyBsYXlvdXRzLgoKIyMjIE5leHQgYWN0aW9uCgpPcGVuIFBSICM2IGZvciBTdGVwIDYsIHJlcXVpcmUgdGhlIG5vcm1hbCByZXBvc2l0b3J5IENJIG1hdHJpeCB0byBwYXNzLCByZXZpZXcgdGhlIGRpZmYgb25jZSwgYW5kIG1lcmdlLiBBZnRlciBtZXJnZSwgU3RlcCA3IGlzIHRyYWplY3RvcnkgcmVwcmVzZW50YXRpb24gYW5kIHN0cnVjdHVyYWwgdmFsaWRhdGlvbi4K"
+          entry = b64decode(payload).decode("utf-8")
+          path = Path("LidarPerf_research_execution_plan.md")
+          with path.open("a", encoding="utf-8") as handle:
+              handle.write(entry)
       - name: Remove temporary Step 6 workflows and commit
         run: |
           git rm .github/workflows/finalize-step6.yml .github/workflows/pre-step6.yml
