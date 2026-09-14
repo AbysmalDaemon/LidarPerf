@@ -33,9 +33,10 @@ The package currently includes:
 - bitwise fixture golden tests across the supported Python CI matrix;
 - versioned `.lperf` result metadata, immutable bundle writing, SHA-256 payload checksums, and verification;
 - read-only host fingerprinting and `lidarperf doctor` benchmark-readiness diagnostics;
-- a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe.
+- a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe;
+- canonical trajectory parsing/validation, explicit timestamp association, rigid SE(3) alignment, APE, distance-window relative-pose errors, and coverage accounting.
 
-Real estimator/dataset orchestration and trajectory metrics are **not implemented yet**.
+Real estimator/dataset orchestration is **not implemented yet**.
 
 ## Planned CLI
 
@@ -103,8 +104,8 @@ lidarperf synthetic generate ./distorted-fixture \
 The current reference documents resolve to:
 
 ```text
-lidarperf/lo-se3@1   d3f93d00b1958433d0f9b7093810d840a8cd41cd323e27957563531f29da8703
-lidarperf/lio-se3@1  b4bcef011bb82e9368edebfba8263b0cc41c6e5de91add0b7db1d847a6c40c41
+lidarperf/lo-se3@1   12d51a84c47c9ff75f0feb828ba24a8210c87ecac8e595d09485dec72719ba41
+lidarperf/lio-se3@1  440847ba6e087fe178e5273d2788e6531de679092920f737045462610f6cd735
 ```
 
 These hashes identify the fully resolved protocol content. A semantic protocol change must produce a different content hash and, once a protocol is released, a new protocol version rather than silently changing the old definition.

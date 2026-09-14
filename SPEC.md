@@ -831,6 +831,30 @@ Distance-window examples:
 100 m
 ```
 
+Each distance window MUST declare both its pairing rule and tolerance. The v0.1 generic
+profile supports:
+
+```yaml
+relative_error_windows:
+  - distance_m: 10.0
+    pairing: all_starts_nearest_reference_distance
+    relative_tolerance: 0.1
+```
+
+For `all_starts_nearest_reference_distance`:
+
+1. cumulative path length is computed from the associated **reference** trajectory;
+2. every associated reference pose is considered as a possible start;
+3. the later endpoint whose reference path distance is closest to `distance_m` is chosen;
+4. ties choose the earlier endpoint;
+5. the pair is accepted only when
+   `abs(actual_distance_m - distance_m) <= distance_m * relative_tolerance`;
+6. overlapping windows are allowed;
+7. the actual accepted reference distance distribution and pair count MUST be reported.
+
+If no accepted pair exists for a requested window, that metric is unavailable. LidarPerf
+MUST NOT fabricate a zero error.
+
 Outputs SHOULD include:
 
 - translational relative error in metres
@@ -838,9 +862,8 @@ Outputs SHOULD include:
 - normalized translation %
 - normalized rotation deg/m
 
-The reference trajectory defines path-length windows.
-
-The exact pairing/tolerance rule is protocol data.
+The reference trajectory defines path-length windows. Pairing and tolerance are protocol
+data and therefore participate in the protocol fingerprint.
 
 ---
 

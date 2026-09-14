@@ -299,16 +299,29 @@
     },
     "RelativeErrorWindow": {
       "additionalProperties": false,
-      "description": "Distance window requested for relative trajectory error.",
+      "description": "Distance window plus explicit reference-path pairing semantics.",
       "properties": {
         "distance_m": {
           "exclusiveMinimum": 0,
           "title": "Distance M",
           "type": "number"
+        },
+        "pairing": {
+          "const": "all_starts_nearest_reference_distance",
+          "title": "Pairing",
+          "type": "string"
+        },
+        "relative_tolerance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Relative Tolerance",
+          "type": "number"
         }
       },
       "required": [
-        "distance_m"
+        "distance_m",
+        "pairing",
+        "relative_tolerance"
       ],
       "title": "RelativeErrorWindow",
       "type": "object"

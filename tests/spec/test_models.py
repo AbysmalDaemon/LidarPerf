@@ -80,11 +80,26 @@ def test_repetition_strength_must_be_monotonic(lo_protocol_data: dict) -> None:
 
 def test_relative_windows_must_be_in_increasing_order(lo_protocol_data: dict) -> None:
     lo_protocol_data["trajectory"]["relative_error_windows"] = [
-        {"distance_m": 100.0},
-        {"distance_m": 10.0},
+        {
+            "distance_m": 100.0,
+            "pairing": "all_starts_nearest_reference_distance",
+            "relative_tolerance": 0.1,
+        },
+        {
+            "distance_m": 10.0,
+            "pairing": "all_starts_nearest_reference_distance",
+            "relative_tolerance": 0.1,
+        },
     ]
 
     with pytest.raises(ValidationError, match="ordered by increasing distance"):
+        BenchmarkProtocol.model_validate(lo_protocol_data)
+
+
+def test_relative_windows_require_pairing_semantics(lo_protocol_data: dict) -> None:
+    lo_protocol_data["trajectory"]["relative_error_windows"] = [{"distance_m": 10.0}]
+
+    with pytest.raises(ValidationError, match="Field required"):
         BenchmarkProtocol.model_validate(lo_protocol_data)
 
 
