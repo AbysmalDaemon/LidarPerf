@@ -17,140 +17,108 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: Patch verifier and tamper test
+      - name: Patch verifier structurally
         run: |
           python - <<'PY'
           from pathlib import Path
 
           verify = Path('src/lidarperf/bundle/verify.py')
-          text = verify.read_text(encoding='utf-8')
+          lines = verify.read_text(encoding='utf-8').splitlines()
 
-          marker = 'from lidarperf.spec import ProtocolLoadError, load_protocol, sha256_fingerprint\n'
-          assert marker in text
-          text = text.replace(
-              marker,
-              'from lidarperf.repeatability import (\n'
-              '    RepeatabilityError,\n'
-              '    scalar_distributions,\n'
-              '    trajectory_repeatability,\n'
-              ')\n'
-              + marker
-              + 'from lidarperf.trajectory import TrajectoryError, parse_tum\n',
-              1,
+          spec_import = lines.index(
+              'from lidarperf.spec import ProtocolLoadError, load_protocol, sha256_fingerprint'
           )
+          lines[spec_import:spec_import] = [
+              'from lidarperf.repeatability import (',
+              '    RepeatabilityError,',
+              '    scalar_distributions,',
+              '    trajectory_repeatability,',
+              ')',
+          ]
+          measurement_import = lines.index('from lidarperf.spec.enums import MeasurementClass')
+          lines.insert(measurement_import + 1, 'from lidarperf.trajectory import TrajectoryError, parse_tum')
 
-          marker = '    successful_trials = 0\n    failed_trials = 0\n'
-          assert marker in text
-          text = text.replace(
-              marker,
-              marker
-              + '    successful_metric_records: list[dict[str, Any]] = []\n'
-              + '    successful_resource_records: list[dict[str, Any]] = []\n'
-              + '    successful_trajectories = []\n',
-              1,
-          )
+          failed_index = lines.index('    failed_trials = 0')
+          lines[failed_index + 1:failed_index + 1] = [
+              '    successful_metric_records: list[dict[str, Any]] = []',
+              '    successful_resource_records: list[dict[str, Any]] = []',
+              '    successful_trajectories = []',
+          ]
 
-          old = '''        trial = _load_json(root / directory / "trial.json", TrialRecord, collector, "TRIAL_INVALID")
-          _load_json(root / directory / "metrics.json", MetricsRecord, collector, "METRICS_INVALID")
-          _load_json(
-              root / directory / "resources.json", ResourcesRecord, collector, "RESOURCES_INVALID"
-          )
-          if trial is not None:
-              if trial.trial_index != trial_index:
-                  collector.error(
-                      "TRIAL_INDEX_MISMATCH",
-                      f"{directory}/trial.json has trial_index={trial.trial_index}",
-                  )
-              if trial.status == TrialStatus.SUCCESS:
-                  successful_trials += 1
-              else:
-                  failed_trials += 1
-          '''
-          new = '''        trial = _load_json(root / directory / "trial.json", TrialRecord, collector, "TRIAL_INVALID")
-          metrics = _load_json(
-              root / directory / "metrics.json", MetricsRecord, collector, "METRICS_INVALID"
-          )
-          resources = _load_json(
-              root / directory / "resources.json", ResourcesRecord, collector, "RESOURCES_INVALID"
-          )
-          if trial is not None:
-              if trial.trial_index != trial_index:
-                  collector.error(
-                      "TRIAL_INDEX_MISMATCH",
-                      f"{directory}/trial.json has trial_index={trial.trial_index}",
-                  )
-              if trial.status == TrialStatus.SUCCESS:
-                  successful_trials += 1
-                  if metrics is not None:
-                      successful_metric_records.append(metrics.values)
-                  if resources is not None:
-                      successful_resource_records.append(resources.values)
-                  trajectory_path = root / directory / "trajectory.tum"
-                  if trajectory_path.is_file() and resolved_protocol is not None:
-                      try:
-                          successful_trajectories.append(
-                              parse_tum(
-                                  trajectory_path.read_text(encoding="utf-8"),
-                                  body_frame=resolved_protocol.trajectory.evaluation_frame,
-                              )
-                          )
-                      except (OSError, TrajectoryError) as exc:
-                          collector.error(
-                              "TRAJECTORY_INVALID",
-                              f"{directory}/trajectory.tum: {exc}",
-                          )
-              else:
-                  failed_trials += 1
-          '''
-          assert old in text
-          text = text.replace(old, new, 1)
+          success_index = lines.index('                successful_trials += 1', failed_index)
+          lines[success_index + 1:success_index + 1] = [
+              '                metrics = _load_json(',
+              '                    root / directory / "metrics.json",',
+              '                    MetricsRecord,',
+              '                    collector,',
+              '                    "METRICS_INVALID",',
+              '                )',
+              '                resources = _load_json(',
+              '                    root / directory / "resources.json",',
+              '                    ResourcesRecord,',
+              '                    collector,',
+              '                    "RESOURCES_INVALID",',
+              '                )',
+              '                if metrics is not None:',
+              '                    successful_metric_records.append(metrics.values)',
+              '                if resources is not None:',
+              '                    successful_resource_records.append(resources.values)',
+              '                trajectory_path = root / directory / "trajectory.tum"',
+              '                if trajectory_path.is_file() and resolved_protocol is not None:',
+              '                    try:',
+              '                        successful_trajectories.append(',
+              '                            parse_tum(',
+              '                                trajectory_path.read_text(encoding="utf-8"),',
+              '                                body_frame=resolved_protocol.trajectory.evaluation_frame,',
+              '                            )',
+              '                        )',
+              '                    except (OSError, TrajectoryError) as exc:',
+              '                        collector.error(',
+              '                            "TRAJECTORY_INVALID",',
+              '                            f"{directory}/trajectory.tum: {exc}",',
+              '                        )',
+          ]
 
-          tail = '''    if aggregate is not None and manifest.trial_count > 1:
-              if aggregate.metrics.get("summary_schema") != "lidarperf.repeatability.v1":
-                  collector.error(
-                      "AGGREGATE_REPEATABILITY_SCHEMA_MISSING",
-                      "multi-trial bundles require lidarperf.repeatability.v1 aggregate summaries",
-                  )
-              expected_metrics = scalar_distributions(successful_metric_records)
-              if aggregate.metrics.get("trial_metrics") != expected_metrics:
-                  collector.error(
-                      "AGGREGATE_METRIC_DISTRIBUTION_MISMATCH",
-                      "aggregate trial-metric distributions do not match measured trial payloads",
-                  )
-              expected_resources = scalar_distributions(successful_resource_records)
-              if aggregate.metrics.get("resources") != expected_resources:
-                  collector.error(
-                      "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH",
-                      "aggregate resource distributions do not match measured trial payloads",
-                  )
-              if len(successful_trajectories) >= 2:
-                  try:
-                      expected_repeatability = trajectory_repeatability(successful_trajectories)
-                  except RepeatabilityError as exc:
-                      collector.error("TRAJECTORY_REPEATABILITY_INVALID", str(exc))
-                  else:
-                      if aggregate.metrics.get("trajectory_repeatability") != expected_repeatability:
-                          collector.error(
-                              "AGGREGATE_TRAJECTORY_REPEATABILITY_MISMATCH",
-                              "aggregate trajectory repeatability does not match trial trajectories",
-                          )
-
-          '''
-          return_marker = '    return collector.report()\n'
-          before, separator, after = text.rpartition(return_marker)
-          assert separator and not after
-          text = before + tail + return_marker
-          verify.write_text(text, encoding='utf-8')
+          return_index = len(lines) - 1 - lines[::-1].index('    return collector.report()')
+          lines[return_index:return_index] = [
+              '',
+              '    if aggregate is not None and manifest.trial_count > 1:',
+              '        if aggregate.metrics.get("summary_schema") != "lidarperf.repeatability.v1":',
+              '            collector.error(',
+              '                "AGGREGATE_REPEATABILITY_SCHEMA_MISSING",',
+              '                "multi-trial bundles require lidarperf.repeatability.v1 aggregate summaries",',
+              '            )',
+              '        expected_metrics = scalar_distributions(successful_metric_records)',
+              '        if aggregate.metrics.get("trial_metrics") != expected_metrics:',
+              '            collector.error(',
+              '                "AGGREGATE_METRIC_DISTRIBUTION_MISMATCH",',
+              '                "aggregate trial-metric distributions do not match measured trial payloads",',
+              '            )',
+              '        expected_resources = scalar_distributions(successful_resource_records)',
+              '        if aggregate.metrics.get("resources") != expected_resources:',
+              '            collector.error(',
+              '                "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH",',
+              '                "aggregate resource distributions do not match measured trial payloads",',
+              '            )',
+              '        if len(successful_trajectories) >= 2:',
+              '            try:',
+              '                expected_repeatability = trajectory_repeatability(successful_trajectories)',
+              '            except RepeatabilityError as exc:',
+              '                collector.error("TRAJECTORY_REPEATABILITY_INVALID", str(exc))',
+              '            else:',
+              '                if aggregate.metrics.get("trajectory_repeatability") != expected_repeatability:',
+              '                    collector.error(',
+              '                        "AGGREGATE_TRAJECTORY_REPEATABILITY_MISMATCH",',
+              '                        "aggregate trajectory repeatability does not match trial trajectories",',
+              '                    )',
+          ]
+          verify.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
           tests = Path('tests/test_runset.py')
-          test_text = tests.read_text(encoding='utf-8')
-          import_marker = 'from lidarperf.runset import run_evalio_repeated_benchmark\n'
-          assert import_marker in test_text
-          test_text = test_text.replace(
-              import_marker,
-              'from lidarperf.bundle import verify_bundle\n' + import_marker,
-              1,
-          )
+          test_lines = tests.read_text(encoding='utf-8').splitlines()
+          import_index = test_lines.index('from lidarperf.runset import run_evalio_repeated_benchmark')
+          test_lines.insert(import_index, 'from lidarperf.bundle import verify_bundle')
+          test_text = '\n'.join(test_lines) + '\n'
           test_text += '''\n\ndef _refresh_checksum(bundle: Path, relative_path: str) -> None:
               digest = hashlib.sha256((bundle / relative_path).read_bytes()).hexdigest()
               checksum_path = bundle / "checksums.sha256"
@@ -181,7 +149,6 @@ jobs:
                   evalio_backend=FakeEvalioBackend(),
                   execution_backend=FakeBenchExecBackend(),
               )
-
               aggregate_path = bundle / "aggregate.json"
               aggregate = json.loads(aggregate_path.read_text(encoding="utf-8"))
               aggregate["metrics"]["resources"]["wall_time_s"]["median"] = 999.0
@@ -190,7 +157,6 @@ jobs:
                   encoding="utf-8",
               )
               _refresh_checksum(bundle, "aggregate.json")
-
               report = verify_bundle(bundle)
               assert report.status == VerificationStatus.INVALID
               assert "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH" in {
