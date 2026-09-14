@@ -1,9 +1,9 @@
 # LidarPerf Benchmark Specification
 
 **Document:** `SPEC.md`  
-**Specification version:** Draft `0.1.0`  
+**Specification version:** `0.1.0`  
 **Date:** 2026-09-14  
-**Status:** Approved for implementation — Gate 1 approved 2026-09-14.**  
+**Status:** Approved for implementation — Gate 1 approved 2026-09-14.  
 **Project:** LidarPerf
 
 ---
