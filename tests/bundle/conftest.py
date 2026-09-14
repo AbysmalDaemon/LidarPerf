@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -96,7 +96,7 @@ def _write_bundle(root: Path, *, weak_dataset: bool = False) -> Path:
         ResultManifestCore(
             lidarperf_version=__version__,
             result_id=UUID("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"),
-            created_at=datetime(2026, 9, 14, 10, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 9, 14, 10, 0, tzinfo=UTC),
             protocol=ProtocolReference(
                 id=resolved.document.protocol.id,
                 version=resolved.document.protocol.version,
