@@ -1,0 +1,80 @@
+name: Step 8 real KISS validation
+
+on:
+  push:
+    branches: [evalio-kiss]
+
+permissions:
+  contents: write
+
+env:
+  EVALIO_DATA: ${{ github.workspace }}/.evalio_data
+
+jobs:
+  real-kiss:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install LidarPerf with evalio
+        run: python -m pip install -e '.[dev,evalio]'
+
+      - name: Verify evalio contains KISS-ICP
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          from evalio.pipelines import PipelineNotFound, get_pipeline
+
+          kiss = get_pipeline("kiss")
+          if isinstance(kiss, PipelineNotFound):
+              raise SystemExit("evalio wheel does not contain the kiss pipeline")
+          print("evalio", importlib.metadata.version("evalio"))
+          print("kiss", kiss.version())
+          print("kiss defaults", kiss.default_params())
+          PY
+
+      - name: Download public Hilti 2022 basement sequence
+        run: |
+          df -h .
+          evalio dl hilti_2022/basement_2
+          du -sh "$EVALIO_DATA" || true
+          df -h .
+
+      - name: Run real KISS-ICP through evalio
+        run: |
+          rm -rf .step8_results
+          evalio run \
+            -o .step8_results \
+            -d hilti_2022/basement_2 \
+            -p kiss \
+            -l 120
+          test -s .step8_results/hilti_2022/basement_2/kiss.csv
+          test -s .step8_results/hilti_2022/basement_2/gt.csv
+
+      - name: Evaluate KISS output with LidarPerf
+        run: |
+          python scripts/validate_evalio_kiss.py \
+            --results .step8_results \
+            --dataset hilti_2022/basement_2 \
+            --pipeline kiss \
+            --length 120 \
+            --output docs/validation/step8_kiss_evalio.json
+
+      - name: Validate repository
+        run: |
+          ruff check .
+          pytest
+
+      - name: Commit integration evidence and remove one-shot workflow
+        run: |
+          git rm .github/workflows/step8-real-kiss.yml
+          git add docs/validation/step8_kiss_evalio.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test: record real evalio KISS integration evidence'
+          git push

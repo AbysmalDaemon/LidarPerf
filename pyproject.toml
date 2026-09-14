@@ -43,6 +43,9 @@ dependencies = [
 benchmark = [
   "benchexec>=3.31,<4",
 ]
+evalio = [
+  "evalio>=0.6,<0.7",
+]
 dev = [
   # Pin schema/lint/test tooling so generated artifacts and CI do not drift silently.
   "pydantic==2.13.5",
