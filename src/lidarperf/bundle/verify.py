@@ -12,8 +12,14 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from lidarperf.repeatability import (
+    RepeatabilityError,
+    scalar_distributions,
+    trajectory_repeatability,
+)
 from lidarperf.spec import ProtocolLoadError, load_protocol, sha256_fingerprint
 from lidarperf.spec.enums import MeasurementClass
+from lidarperf.trajectory import TrajectoryError, parse_tum
 
 from .models import (
     AggregateRecord,
@@ -238,6 +244,92 @@ def _minimum_trials(protocol, measurement_class: MeasurementClass) -> int:
     return protocol.repetition.publication_min_trials
 
 
+_CONTROLLED_HOST_MODES = {"self_hosted", "dedicated_vm", "bare_metal", "other_controlled"}
+
+
+def _verify_measurement_environment(
+    manifest: ResultManifest,
+    environment: EnvironmentRecord,
+    collector: _Collector,
+) -> None:
+    if environment.measurement_class != manifest.measurement_class:
+        collector.error(
+            "MEASUREMENT_CLASS_MISMATCH",
+            "manifest measurement_class differs from environment.json",
+        )
+    if manifest.measurement_class == MeasurementClass.EXPLORATORY:
+        return
+
+    execution = environment.execution
+    host = environment.host
+    host_control_mode = execution.get("host_control_mode")
+    if host_control_mode not in _CONTROLLED_HOST_MODES:
+        collector.error(
+            "CONTROLLED_HOST_NOT_DECLARED",
+            "controlled/publication evidence requires a stable self-hosted or otherwise "
+            "controlled host declaration",
+        )
+    if execution.get("backend") != "benchexec-runexec":
+        collector.error(
+            "CONTROLLED_BENCHEXEC_REQUIRED",
+            "controlled/publication process measurements require BenchExec/runexec",
+        )
+    cpu_allocation = execution.get("cpu_allocation")
+    if not isinstance(cpu_allocation, list) or not cpu_allocation:
+        collector.error(
+            "CONTROLLED_CPU_ALLOCATION_MISSING",
+            "controlled/publication evidence requires an explicit CPU allocation",
+        )
+    thread_policy = execution.get("thread_policy")
+    if not isinstance(thread_policy, str) or not thread_policy.strip():
+        collector.error(
+            "CONTROLLED_THREAD_POLICY_MISSING",
+            "controlled/publication evidence requires an explicit thread policy",
+        )
+
+    os_record = host.get("os") if isinstance(host, dict) else None
+    if not isinstance(os_record, dict) or str(os_record.get("system", "")).lower() != "linux":
+        collector.error(
+            "CONTROLLED_LINUX_REQUIRED", "controlled/publication evidence requires Linux"
+        )
+    cpu_record = host.get("cpu") if isinstance(host, dict) else None
+    governors = cpu_record.get("governors") if isinstance(cpu_record, dict) else None
+    if not isinstance(governors, list) or not governors:
+        collector.error(
+            "CONTROLLED_GOVERNOR_STATE_MISSING",
+            "controlled/publication evidence requires recorded CPU governor state",
+        )
+    storage_record = host.get("storage") if isinstance(host, dict) else None
+    storage_ok = (
+        isinstance(storage_record, dict)
+        and storage_record.get("inspected") is True
+        and storage_record.get("network_filesystem") is False
+    )
+    if not storage_ok:
+        collector.error(
+            "CONTROLLED_STORAGE_NOT_PROVEN",
+            "controlled/publication evidence requires inspected local/controlled benchmark storage",
+        )
+    memory_record = host.get("memory") if isinstance(host, dict) else None
+    if not isinstance(memory_record, dict):
+        collector.error(
+            "CONTROLLED_SWAP_STATE_MISSING", "controlled/publication swap state is missing"
+        )
+    else:
+        total = memory_record.get("swap_total_bytes")
+        free = memory_record.get("swap_free_bytes")
+        if not isinstance(total, int) or not isinstance(free, int):
+            collector.error(
+                "CONTROLLED_SWAP_STATE_MISSING",
+                "controlled/publication evidence requires known swap state",
+            )
+        elif max(0, total - free) > 0:
+            collector.error(
+                "CONTROLLED_SWAP_IN_USE",
+                "controlled/publication evidence cannot be recorded while swap is in use",
+            )
+
+
 def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
     """Verify a result bundle's schema, provenance links, inventory, and SHA-256 integrity."""
 
@@ -332,11 +424,8 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
         if dataset.fingerprint_class == DatasetFingerprintClass.WEAK:
             collector.warn("WEAK_DATASET_FINGERPRINT", "dataset identity is not content-exact")
 
-    if environment is not None and environment.measurement_class != manifest.measurement_class:
-        collector.error(
-            "MEASUREMENT_CLASS_MISMATCH",
-            "manifest measurement_class differs from environment.json",
-        )
+    if environment is not None:
+        _verify_measurement_environment(manifest, environment, collector)
 
     if resolved_protocol is not None:
         if manifest.measurement_class not in resolved_protocol.measurement.allowed_classes:
@@ -354,8 +443,7 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
             )
 
     expected_trial_records = {
-        f"trials/{trial_index:04d}/trial.json"
-        for trial_index in range(1, manifest.trial_count + 1)
+        f"trials/{trial_index:04d}/trial.json" for trial_index in range(1, manifest.trial_count + 1)
     }
     declared_trial_records = {
         path
@@ -371,6 +459,9 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
 
     successful_trials = 0
     failed_trials = 0
+    successful_metric_records: list[dict[str, Any]] = []
+    successful_resource_records: list[dict[str, Any]] = []
+    successful_trajectories = []
     for trial_index in range(1, manifest.trial_count + 1):
         directory = f"trials/{trial_index:04d}"
         for filename in _REQUIRED_TRIAL_FILES:
@@ -395,6 +486,36 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
                 )
             if trial.status == TrialStatus.SUCCESS:
                 successful_trials += 1
+                metrics = _load_json(
+                    root / directory / "metrics.json",
+                    MetricsRecord,
+                    collector,
+                    "METRICS_INVALID",
+                )
+                resources = _load_json(
+                    root / directory / "resources.json",
+                    ResourcesRecord,
+                    collector,
+                    "RESOURCES_INVALID",
+                )
+                if metrics is not None:
+                    successful_metric_records.append(metrics.values)
+                if resources is not None:
+                    successful_resource_records.append(resources.values)
+                trajectory_path = root / directory / "trajectory.tum"
+                if trajectory_path.is_file() and resolved_protocol is not None:
+                    try:
+                        successful_trajectories.append(
+                            parse_tum(
+                                trajectory_path.read_text(encoding="utf-8"),
+                                body_frame=resolved_protocol.trajectory.evaluation_frame,
+                            )
+                        )
+                    except (OSError, TrajectoryError) as exc:
+                        collector.error(
+                            "TRAJECTORY_INVALID",
+                            f"{directory}/trajectory.tum: {exc}",
+                        )
             else:
                 failed_trials += 1
 
@@ -415,4 +536,33 @@ def verify_bundle(bundle_dir: str | Path) -> VerificationReport:
                 "aggregate trial counts do not match manifest trial_count",
             )
 
+    if aggregate is not None and manifest.trial_count > 1:
+        if aggregate.metrics.get("summary_schema") != "lidarperf.repeatability.v1":
+            collector.error(
+                "AGGREGATE_REPEATABILITY_SCHEMA_MISSING",
+                "multi-trial bundles require lidarperf.repeatability.v1 aggregate summaries",
+            )
+        expected_metrics = scalar_distributions(successful_metric_records)
+        if aggregate.metrics.get("trial_metrics") != expected_metrics:
+            collector.error(
+                "AGGREGATE_METRIC_DISTRIBUTION_MISMATCH",
+                "aggregate trial-metric distributions do not match measured trial payloads",
+            )
+        expected_resources = scalar_distributions(successful_resource_records)
+        if aggregate.metrics.get("resources") != expected_resources:
+            collector.error(
+                "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH",
+                "aggregate resource distributions do not match measured trial payloads",
+            )
+        if len(successful_trajectories) >= 2:
+            try:
+                expected_repeatability = trajectory_repeatability(successful_trajectories)
+            except RepeatabilityError as exc:
+                collector.error("TRAJECTORY_REPEATABILITY_INVALID", str(exc))
+            else:
+                if aggregate.metrics.get("trajectory_repeatability") != expected_repeatability:
+                    collector.error(
+                        "AGGREGATE_TRAJECTORY_REPEATABILITY_MISMATCH",
+                        "aggregate trajectory repeatability does not match trial trajectories",
+                    )
     return collector.report()

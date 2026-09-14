@@ -3226,3 +3226,51 @@ This is the first durable proof that LidarPerf is more than disconnected compone
 ### Next action
 
 Finalize PR #10 documentation, require the normal Python 3.11/3.12/3.13 matrix on the exact final branch head, squash-merge only when green, verify post-merge `main`, then begin Step 10: repeated-run scheduling, warmups, runtime distributions, trajectory repeatability, and the first legitimately controlled measurement-class bundle.
+
+
+---
+
+## Step 10 — repeated-run execution and repeatability — COMPLETE (2026-09-14)
+
+### Goal
+
+Extend the Step 9 single-trial artifact path into an auditable run set: explicit warmups, multiple measured trials, retained failures, runtime/resource distributions, estimator-output repeatability, and independent verifier recomputation.
+
+### Implemented
+
+- added `run_evalio_repeated_benchmark` as the repeated-run orchestration path;
+- warmups are explicit evidence under `warmups/` but never contribute to `manifest.trial_count` or measured statistics;
+- measured execution failures are retained as failed trial records instead of disappearing from the run set;
+- successful measured trials contribute scalar distributions with count/min/max/mean/median/population-std/p90/p95/p99;
+- trajectory repeatability is computed over every measured trial pair at exact common timestamps with no hidden spatial alignment;
+- repeatability uses the canonical serialized TUM payload representation, so producer and verifier operate on the same immutable evidence;
+- verifier independently recomputes scalar metric/resource distributions and trajectory repeatability and rejects checksum-refreshed aggregate tampering;
+- repeated-run environment metadata now records host-control declaration, CPU allocation, and thread policy;
+- `controlled`/`publication` producer requests now fail before execution unless the declared environment satisfies the v0.1 controlled-host requirements that can be checked here: Linux, stable controlled-host declaration, explicit CPU allocation, explicit thread policy, recorded governor state, inspected local/controlled storage, known zero swap use, and BenchExec readiness;
+- verifier applies the same controlled-host evidence checks so a bundle cannot be promoted merely by editing `measurement_class` and refreshing checksums.
+
+### Real validation
+
+Dataset/pipeline remained `hilti_2022/basement_2` + KISS-ICP 1.3.0 through evalio 0.6.1 and BenchExec `runexec 3.35`, using 120 LiDAR scans per execution.
+
+The successful real validation workflow was GitHub Actions run `34889567816`. It performed one warmup execution, five measured executions, five successful measured trials, zero failed trials, and independent `lidarperf verify` before committing evidence.
+
+The durable bundle is `docs/validation/step10_kiss_hilti_repeated.lperf/`.
+
+The measured hosted-runner resource distribution is retained as integration evidence but is explicitly non-authoritative. Wall time across the five measured trials had mean `3.5721830594 s`, median `3.5747101960 s`, minimum `3.5140726920 s`, maximum `3.6202339240 s`, and population standard deviation `0.0419640896 s`. Mean CPU time was `4.4439166 s`; mean peak memory was `129227161.6 bytes`.
+
+All five serialized estimator trajectories had identical timestamp sets and translation payloads. Across the 10 trial pairs, maximum pose translation delta was `0.0 m`; maximum pose rotation delta was approximately `2.41484e-06 deg`, with pairwise rotation RMSE approximately `8.39423e-07 deg`. This is integration evidence of extremely stable output for this short KISS/Hilti prefix, not a general determinism claim for KISS-ICP or LIO systems.
+
+### Errors / bugs discovered and resolved
+
+1. The first real repeated run (`34888575461`) failed bundle self-verification with `AGGREGATE_TRAJECTORY_REPEATABILITY_MISMATCH`. The producer had computed repeatability from higher-precision in-memory poses while the verifier recomputed from canonical TUM payloads whose pose scalars are serialized to 12 decimal places. Fix: canonicalize producer-side repeatability through serialize→parse before aggregation. Added a regression test demonstrating a sub-serialization-precision in-memory difference collapses in the actual immutable payload.
+2. After the corrected real run passed, a specification audit caught a more important semantic error: five trials and genuine BenchExec accounting do **not** make an ordinary GitHub-hosted VM `controlled`. `SPEC.md` requires a stable self-hosted or otherwise controlled Linux machine plus additional host controls. The real bundle was therefore reclassified from `controlled` to `exploratory`, renamed from `step10_kiss_hilti_controlled.lperf` to `step10_kiss_hilti_repeated.lperf`, and its checksums were regenerated and independently verified.
+3. A first attempt at the final semantic-cleanup workflow was invalid YAML and created no job; no source or evidence files were modified by that failed workflow. The cleanup was rerun through a temporary Python patch script and minimal workflow instead. This tooling failure is retained here as project history.
+
+### Measurement-class conclusion
+
+Trial count is necessary but not sufficient for measurement strength. A repeated run set may contain five or more measured trials and still be `exploratory` when host control cannot be established. This distinction is now enforced by both producer and verifier.
+
+### Step 10 exit condition
+
+Satisfied when the final PR matrix passes on Python 3.11/3.12/3.13, PR #11 is squash-merged, and post-merge `main` CI is green. Controlled real performance evidence is intentionally deferred until a stable controlled Linux benchmark host is available; it is not a blocker for Step 11 comparator development.

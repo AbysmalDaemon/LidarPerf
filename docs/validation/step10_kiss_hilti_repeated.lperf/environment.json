@@ -1,0 +1,109 @@
+{
+  "execution": {
+    "backend": "benchexec-runexec",
+    "backend_version": "runexec 3.35",
+    "command_argv": [
+      "evalio",
+      "run",
+      "-o",
+      ".step10_work/run/trials/0001/evalio",
+      "-d",
+      "hilti_2022/basement_2",
+      "-p",
+      "kiss",
+      "-l",
+      "120"
+    ],
+    "command_argv_scope": "representative first measured trial; exact argv is stored in every trial resources record",
+    "measured_trials": 5,
+    "performance_authoritative": false,
+    "performance_authority_reason": "GitHub-hosted runner; repeated BenchExec accounting validates run-set semantics but is not a stable performance baseline",
+    "statistics_population": "successful measured trials only",
+    "timing_scope": "end_to_end",
+    "warmup_trials": 1,
+    "host_control_mode": "uncontrolled",
+    "host_control_reason": "ordinary GitHub-hosted runner",
+    "cpu_allocation": [],
+    "thread_policy": "KISS-ICP evalio default; max_num_threads=0"
+  },
+  "host": {
+    "captured_at": "2026-09-14T19:58:28.860983Z",
+    "cgroups": {
+      "containerized": false,
+      "controllers": [
+        "cpu",
+        "cpuset",
+        "dmem",
+        "hugetlb",
+        "io",
+        "memory",
+        "misc",
+        "pids",
+        "rdma"
+      ],
+      "version": "v2",
+      "writable": false
+    },
+    "cpu": {
+      "affinity_cpus": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "architecture": "x86_64",
+      "boost_enabled": null,
+      "governors": [],
+      "logical_cpus": 4,
+      "model": "AMD EPYC 7763 64-Core Processor",
+      "numa_nodes": [
+        0
+      ],
+      "physical_cores": 2,
+      "scaling_drivers": [],
+      "thermal_throttle_count": null
+    },
+    "gpu": {
+      "cuda_toolkit_version": null,
+      "devices": [],
+      "nvidia_smi_available": false
+    },
+    "host_sha256": "8e1dde09caec98446dc98306bad670d96472614ab08c27cb8ae44c597daf5f30",
+    "memory": {
+      "available_bytes": 15612932096,
+      "swap_free_bytes": 3221221376,
+      "swap_total_bytes": 3221221376,
+      "total_bytes": 16766414848
+    },
+    "os": {
+      "architecture": "x86_64",
+      "distribution": "Ubuntu",
+      "distribution_version": "24.04",
+      "kernel_release": "6.17.0-1022-azure",
+      "kernel_version": "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+      "libc": "glibc 2.39",
+      "system": "Linux"
+    },
+    "runtime": {
+      "ac_power_online": null,
+      "benchexec_available": true,
+      "load_15m": 0.09326171875,
+      "load_1m": 0.2607421875,
+      "load_5m": 0.17333984375,
+      "runexec_available": true
+    },
+    "schema_version": "lidarperf.host.v1",
+    "storage": {
+      "exists": true,
+      "filesystem_type": "ext4",
+      "inspected": true,
+      "network_filesystem": false
+    }
+  },
+  "measurement_class": "exploratory",
+  "schema_version": "lidarperf.environment.v1",
+  "software": {
+    "evalio": "0.6.1",
+    "lidarperf": "0.0.0"
+  }
+}

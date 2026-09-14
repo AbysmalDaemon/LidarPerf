@@ -1,0 +1,54 @@
+{
+  "schema_version": "lidarperf.metrics.v1",
+  "values": {
+    "alignment.transform": {
+      "mode": "se3",
+      "rotation_matrix": [
+        [
+          -0.6704686751639626,
+          -0.039618132815337055,
+          0.7408793148523627
+        ],
+        [
+          0.137167225111179,
+          -0.987978495088331,
+          0.07129968862692476
+        ],
+        [
+          0.7291480699961973,
+          0.1494285675338673,
+          0.6678429420347246
+        ]
+      ],
+      "translation_m": [
+        122.50504462186264,
+        17.299297000159502,
+        -1.1011420231068219
+      ]
+    },
+    "ape.rotation.rmse_deg": 47.897517630416814,
+    "ape.translation.rmse_m": 0.33748229509746813,
+    "association.interpolated_pose_count": 0,
+    "association.matched_pose_count": 119,
+    "association.max_abs_time_delta_ns": 0,
+    "association.mean_abs_time_delta_ns": 0.0,
+    "association.mode": "nearest",
+    "association.unmatched_estimate_pose_count": 1,
+    "coverage.distance_fraction": 1.0,
+    "coverage.input_support_end_ns": 1649764539962521000,
+    "coverage.input_support_start_ns": 1649764528063481000,
+    "coverage.support_end_ns": 1649764539962521000,
+    "coverage.support_start_ns": 1649764528163469000,
+    "coverage.temporal_fraction": 1.0,
+    "coverage.temporal_min_required": 0.98,
+    "coverage.temporal_pass": true,
+    "rpe.distance_100m.pair_count": 0,
+    "rpe.distance_100m.pairing": "all_starts_nearest_reference_distance",
+    "rpe.distance_100m.relative_tolerance": 0.1,
+    "rpe.distance_10m.pair_count": 0,
+    "rpe.distance_10m.pairing": "all_starts_nearest_reference_distance",
+    "rpe.distance_10m.relative_tolerance": 0.1,
+    "trajectory.estimate.invalid_pose_count": 0,
+    "trajectory.reference.invalid_pose_count": 0
+  }
+}
