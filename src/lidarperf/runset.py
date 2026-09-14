@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 import yaml
@@ -41,6 +41,55 @@ from lidarperf.runner import BenchmarkRunError, BenchmarkVerificationError
 from lidarperf.spec import load_protocol, sha256_fingerprint
 from lidarperf.spec.enums import MeasurementClass
 from lidarperf.trajectory import EvaluationSupport, Trajectory, parse_tum, serialize_tum
+
+HostControlMode = Literal[
+    "uncontrolled",
+    "self_hosted",
+    "dedicated_vm",
+    "bare_metal",
+    "other_controlled",
+]
+_CONTROLLED_HOST_MODES = {"self_hosted", "dedicated_vm", "bare_metal", "other_controlled"}
+_ALL_HOST_CONTROL_MODES = {"uncontrolled", *_CONTROLLED_HOST_MODES}
+
+
+def _validate_measurement_environment(
+    *,
+    measurement_class: MeasurementClass,
+    snapshot: HostSnapshot,
+    limits: ResourceLimits,
+    host_control_mode: HostControlMode,
+    thread_policy: str | None,
+) -> None:
+    if host_control_mode not in _ALL_HOST_CONTROL_MODES:
+        raise ValueError(f"unknown host_control_mode: {host_control_mode!r}")
+    if measurement_class == MeasurementClass.EXPLORATORY:
+        return
+
+    problems: list[str] = []
+    if host_control_mode not in _CONTROLLED_HOST_MODES:
+        problems.append("host is not declared stable self-hosted or otherwise controlled")
+    if snapshot.os.system.lower() != "linux":
+        problems.append("controlled measurements require Linux")
+    if not limits.cpu_cores:
+        problems.append("controlled measurements require an explicit BenchExec CPU allocation")
+    if not thread_policy or not thread_policy.strip():
+        problems.append("controlled measurements require an explicit thread policy")
+    if not snapshot.cpu.governors:
+        problems.append("CPU governor state must be recorded")
+    if not snapshot.storage.inspected or snapshot.storage.network_filesystem is not False:
+        problems.append("benchmark storage must be inspected and local/controlled")
+    swap_used = snapshot.memory.swap_used_bytes
+    if swap_used is None:
+        problems.append("swap state must be known")
+    elif swap_used > 0:
+        problems.append("swap must not be in use during controlled measurement")
+
+    if problems:
+        raise BenchmarkRunError(
+            f"{measurement_class.value}-class evidence does not satisfy controlled-host "
+            f"requirements: {'; '.join(problems)}"
+        )
 
 
 def _required_trial_count(protocol, measurement_class: MeasurementClass) -> int:
@@ -89,12 +138,15 @@ def run_evalio_repeated_benchmark(
     method_version: str | None,
     bundle_dir: str | Path,
     workspace: str | Path,
-    measurement_class: MeasurementClass = MeasurementClass.CONTROLLED,
+    measurement_class: MeasurementClass = MeasurementClass.EXPLORATORY,
     measured_trials: int | None = None,
     warmup_trials: int | None = None,
     resource_limits: ResourceLimits | None = None,
     method_source: MethodSourceRecord | None = None,
     host_snapshot: HostSnapshot | None = None,
+    host_control_mode: HostControlMode = "uncontrolled",
+    host_control_reason: str | None = None,
+    thread_policy: str | None = None,
     execution_metadata: dict[str, Any] | None = None,
     evalio_backend: EvalioBackend | None = None,
     execution_backend: BenchExecBackend | None = None,
@@ -137,6 +189,14 @@ def run_evalio_repeated_benchmark(
     working_root = Path(workspace)
     working_root.mkdir(parents=True, exist_ok=True)
     limits = resource_limits or ResourceLimits()
+    snapshot = host_snapshot or probe_host()
+    _validate_measurement_environment(
+        measurement_class=measurement_class,
+        snapshot=snapshot,
+        limits=limits,
+        host_control_mode=host_control_mode,
+        thread_policy=thread_policy,
+    )
 
     warmups: list[tuple[Any, tuple[str, ...]]] = []
     for warmup_index in range(1, warmup_count + 1):
@@ -223,11 +283,11 @@ def run_evalio_repeated_benchmark(
             successful_metric_records.append(metrics)
             successful_resource_records.append(resources)
             successful_trajectories.append(
-    parse_tum(
-        serialize_tum(trajectory),
-        body_frame=protocol.trajectory.evaluation_frame,
-    )
-)
+                parse_tum(
+                    serialize_tum(trajectory),
+                    body_frame=protocol.trajectory.evaluation_frame,
+                )
+            )
 
             current_gt_hash = _sha256_file(paths.ground_truth)
             if ground_truth_sha256 is None:
@@ -246,7 +306,6 @@ def run_evalio_repeated_benchmark(
     config_text = _algorithm_config_text(algorithm_config)
     config_sha256 = sha256_fingerprint(yaml.safe_load(config_text))
     evalio_capability = evalio.probe_capability()
-    snapshot = host_snapshot or probe_host()
 
     first_execution = measured[0]["execution"]
     first_command = measured[0]["command"]
@@ -262,6 +321,10 @@ def run_evalio_repeated_benchmark(
         "warmup_trials": warmup_count,
         "measured_trials": measured_count,
         "statistics_population": "successful measured trials only",
+        "host_control_mode": host_control_mode,
+        "host_control_reason": host_control_reason,
+        "cpu_allocation": list(limits.cpu_cores),
+        "thread_policy": thread_policy,
     }
     extra_execution = dict(execution_metadata or {})
     overlap = set(execution_record) & set(extra_execution)

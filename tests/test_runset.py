@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,15 @@ from lidarperf.bundle import (
     DatasetRecord,
     VerificationStatus,
     verify_bundle,
+)
+from lidarperf.host import (
+    CgroupSnapshot,
+    CPUSnapshot,
+    HostSnapshot,
+    MemorySnapshot,
+    OSSnapshot,
+    RuntimeSnapshot,
+    StorageSnapshot,
 )
 from lidarperf.runner import BenchmarkRunError
 from lidarperf.runset import run_evalio_repeated_benchmark
@@ -130,6 +140,48 @@ def dataset_record() -> DatasetRecord:
     )
 
 
+def controlled_host_snapshot() -> HostSnapshot:
+    return HostSnapshot(
+        captured_at=datetime.now(UTC),
+        host_sha256="0" * 64,
+        os=OSSnapshot(
+            system="Linux",
+            distribution="Test Linux",
+            distribution_version="1",
+            kernel_release="test",
+            kernel_version="test",
+            architecture="x86_64",
+            libc="glibc",
+        ),
+        cpu=CPUSnapshot(
+            model="test-cpu",
+            architecture="x86_64",
+            logical_cpus=1,
+            physical_cores=1,
+            affinity_cpus=(0,),
+            governors=("performance",),
+        ),
+        memory=MemorySnapshot(
+            total_bytes=1_000_000,
+            available_bytes=900_000,
+            swap_total_bytes=0,
+            swap_free_bytes=0,
+        ),
+        cgroups=CgroupSnapshot(
+            version="v2",
+            controllers=("cpu", "cpuset", "memory"),
+            writable=True,
+        ),
+        storage=StorageSnapshot(
+            inspected=True,
+            exists=True,
+            filesystem_type="ext4",
+            network_filesystem=False,
+        ),
+        runtime=RuntimeSnapshot(benchexec_available=True, runexec_available=True),
+    )
+
+
 def test_controlled_runset_separates_warmup_and_five_measured_trials(tmp_path: Path) -> None:
     executor = FakeBenchExecBackend()
     bundle = tmp_path / "result.lperf"
@@ -146,6 +198,11 @@ def test_controlled_runset_separates_warmup_and_five_measured_trials(tmp_path: P
         workspace=tmp_path / "work",
         measurement_class=MeasurementClass.CONTROLLED,
         measured_trials=5,
+        resource_limits=ResourceLimits(cpu_cores=(0,)),
+        host_snapshot=controlled_host_snapshot(),
+        host_control_mode="self_hosted",
+        host_control_reason="dedicated synthetic unit-test host",
+        thread_policy="single_thread",
         warmup_trials=1,
         evalio_backend=FakeEvalioBackend(),
         execution_backend=executor,
@@ -250,6 +307,11 @@ def test_verifier_recomputes_runset_resource_distributions(tmp_path: Path) -> No
         workspace=tmp_path / "work",
         measurement_class=MeasurementClass.CONTROLLED,
         measured_trials=5,
+        resource_limits=ResourceLimits(cpu_cores=(0,)),
+        host_snapshot=controlled_host_snapshot(),
+        host_control_mode="self_hosted",
+        host_control_reason="dedicated synthetic unit-test host",
+        thread_policy="single_thread",
         warmup_trials=0,
         evalio_backend=FakeEvalioBackend(),
         execution_backend=FakeBenchExecBackend(),
@@ -264,6 +326,64 @@ def test_verifier_recomputes_runset_resource_distributions(tmp_path: Path) -> No
     _refresh_checksum(bundle, "aggregate.json")
     report = verify_bundle(bundle)
     assert report.status == VerificationStatus.INVALID
-    assert "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH" in {
-        issue.code for issue in report.issues
-    }
+    assert "AGGREGATE_RESOURCE_DISTRIBUTION_MISMATCH" in {issue.code for issue in report.issues}
+
+
+def test_controlled_runset_refuses_uncontrolled_host_before_execution(tmp_path: Path) -> None:
+    executor = FakeBenchExecBackend()
+    with pytest.raises(BenchmarkRunError, match="stable self-hosted or otherwise controlled"):
+        run_evalio_repeated_benchmark(
+            protocol_path="protocols/lo/se3_v1.yaml",
+            dataset="example/sequence",
+            pipeline="kiss",
+            length=4,
+            input_support=None,
+            dataset_record=dataset_record(),
+            algorithm_config={},
+            method_version="1.3.0",
+            bundle_dir=tmp_path / "result.lperf",
+            workspace=tmp_path / "work",
+            measurement_class=MeasurementClass.CONTROLLED,
+            measured_trials=5,
+            resource_limits=ResourceLimits(cpu_cores=(0,)),
+            host_snapshot=controlled_host_snapshot(),
+            thread_policy="single_thread",
+            evalio_backend=FakeEvalioBackend(),
+            execution_backend=executor,
+        )
+    assert executor.calls == 0
+
+
+def test_verifier_rejects_forged_controlled_class_on_uncontrolled_host(tmp_path: Path) -> None:
+    bundle = tmp_path / "result.lperf"
+    run_evalio_repeated_benchmark(
+        protocol_path="protocols/lo/se3_v1.yaml",
+        dataset="example/sequence",
+        pipeline="kiss",
+        length=4,
+        input_support=None,
+        dataset_record=dataset_record(),
+        algorithm_config={},
+        method_version="1.3.0",
+        bundle_dir=bundle,
+        workspace=tmp_path / "work",
+        measurement_class=MeasurementClass.EXPLORATORY,
+        measured_trials=5,
+        warmup_trials=0,
+        host_snapshot=controlled_host_snapshot(),
+        host_control_mode="uncontrolled",
+        host_control_reason="ephemeral hosted CI",
+        thread_policy="single_thread",
+        evalio_backend=FakeEvalioBackend(),
+        execution_backend=FakeBenchExecBackend(),
+    )
+    for relative_path in ("manifest.json", "environment.json"):
+        changed = bundle / relative_path
+        payload = json.loads(changed.read_text(encoding="utf-8"))
+        payload["measurement_class"] = "controlled"
+        changed.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        _refresh_checksum(bundle, relative_path)
+
+    report = verify_bundle(bundle)
+    assert report.status == VerificationStatus.INVALID
+    assert "CONTROLLED_HOST_NOT_DECLARED" in {issue.code for issue in report.issues}

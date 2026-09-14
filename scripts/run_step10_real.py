@@ -169,10 +169,13 @@ def main() -> None:
         method_source=MethodSourceRecord(repository="https://github.com/PRBonn/kiss-icp"),
         bundle_dir=args.bundle,
         workspace=args.workspace / "run",
-        measurement_class=MeasurementClass.CONTROLLED,
+        measurement_class=MeasurementClass.EXPLORATORY,
         measured_trials=args.measured_trials,
         warmup_trials=args.warmup_trials,
         host_snapshot=host,
+        host_control_mode="uncontrolled",
+        host_control_reason="ordinary GitHub-hosted runner",
+        thread_policy="KISS-ICP evalio default; max_num_threads=0",
         execution_metadata={
             "performance_authoritative": False,
             "performance_authority_reason": (

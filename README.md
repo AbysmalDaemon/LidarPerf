@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, and the first complete verified real `.lperf` artifact path are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, and repeated-run/repeatability analysis are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -36,11 +36,14 @@ The package currently includes:
 - a Linux BenchExec/`runexec` backend for process-tree wall time, CPU time, memory, CPU-core/NUMA constraints, resource-limit termination semantics, and an active controlled-readiness probe;
 - canonical trajectory parsing/validation, explicit timestamp association, rigid SE(3) alignment, APE, distance-window relative-pose errors, and coverage accounting;
 - a thin evalio execution adapter, validated with real KISS-ICP 1.3.0 on the public Hilti 2022 `basement_2` sequence;
-- a single-trial orchestration path that connects evalio execution, BenchExec accounting, LidarPerf trajectory evaluation, provenance capture, immutable bundle writing, and independent bundle verification.
+- a single-trial orchestration path that connects evalio execution, BenchExec accounting, LidarPerf trajectory evaluation, provenance capture, immutable bundle writing, and independent bundle verification;
+- a repeated-run orchestration path with explicit warmups, retained failed trials, per-metric/resource distributions, and all-pairs estimator-output repeatability recomputed by the verifier from immutable trajectory payloads.
 
 Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
 
-The committed Step 9 result is intentionally `exploratory`: it contains one measured trial, while the approved protocol requires at least five trials for `controlled` evidence and ten for `publication`. The verifier enforces that measurement-strength rule. BenchExec resource accounting in the real bundle is genuine, but the recorded wall/CPU/memory values are explicitly non-authoritative because the run used a GitHub-hosted VM. Step 10 will add repeated-run execution and legitimately controlled measurement bundles.
+The committed Step 9 result is intentionally `exploratory`: it contains one measured trial. Step 10 adds explicit warmups and repeated measured trials, scalar runtime/resource distributions, estimator-output repeatability, and verifier-side aggregate recomputation. The durable Step 10 integration bundle is `docs/validation/step10_kiss_hilti_repeated.lperf/`: one warmup plus five measured KISS-ICP/Hilti executions, all successful and independently verified.
+
+The Step 10 hosted bundle remains `exploratory` even with five measured trials. The specification requires a stable self-hosted or otherwise controlled Linux machine, explicit CPU allocation/thread policy, recorded governor state, controlled storage, and no swap pressure before a result may claim `controlled` strength. Ordinary GitHub-hosted runners therefore validate the repeated-run machinery but are not authoritative performance baselines.
 
 ## Planned CLI
 
