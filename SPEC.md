@@ -354,18 +354,18 @@ estimator_semantics:
 estimator_semantics:
   temporal_mode: online_fixed_lag
   fixed_lag_seconds: 1.0
-b``
+```
 
 ```yaml
 estimator_semantics:
   temporal_mode: offline_noncausal
-b``
+```
 
 ## 9.1 `online_causal`
 
 The estimate at time `t` does not depend on sensor observations after `t`.
 
-## 9.2 `online_fixed_lagg
+## 9.2 `online_fixed_lag`
 
 The estimator may revise recent states using observations inside a bounded, declared lag.
 
@@ -399,7 +399,7 @@ The canonical pose is:
 
 > `T_W_B`
 
-where `T_W_B` transforms a point expressed in body frame bB` into world/reference frame `W`.
+where `T_W_B` transforms a point expressed in body frame `B` into world/reference frame `W`.
 
 For a point `p_B`:
 
@@ -1482,14 +1482,20 @@ The proposed canonical unarchived structure is:
 │   │   ├── resources.json
 │   │   ├── trajectory.tum
 │   │   ├── telemetry.parquet        # optional
-│   │   ├── stdout.log
-│   │   └── stderr.log
+│   │   └── process.log              # combined stdout + stderr
 │   ├── 0002/
 │   │   └── ...
 │   └── ...
 │
 └── checksums.sha256
 ```
+
+Each trial MUST contain exactly one execution-log layout:
+
+- `process.log` when the execution backend exposes a single combined stdout/stderr stream; or
+- both `stdout.log` and `stderr.log` when the backend can preserve the streams separately.
+
+The two layouts are mutually exclusive. LidarPerf MUST NOT relabel a combined stream as stdout or fabricate an empty stderr file merely to satisfy an artifact shape. This rule preserves measurement provenance across backends such as BenchExec, whose `runexec --output` file contains both command stdout and stderr.
 
 An archived transport format MAY be introduced later.
 
@@ -1597,7 +1603,7 @@ At minimum:
 - hardware
 - CPU allocation
 - cache policy
-- repeatition policy
+- repetition policy
 - tuning class
 - software environment
 
