@@ -67,7 +67,12 @@ def test_build_command_has_explicit_boundary(tmp_path: Path) -> None:
     )
 
 
-def _fake_runexec(path: Path, *, missing_metrics: bool = False) -> Path:
+def _fake_runexec(
+    path: Path,
+    *,
+    missing_metrics: bool = False,
+    omit_memory: bool = False,
+) -> Path:
     body = """#!/usr/bin/env python3
 import os
 import pathlib
@@ -84,7 +89,9 @@ else:
     print('returnvalue=0')
 """
     if not missing_metrics:
-        body += "print('walltime=0.25s')\nprint('cputime=0.125s')\nprint('memory=4096B')\n"
+        body += "print('walltime=0.25s')\nprint('cputime=0.125s')\n"
+        if not omit_memory:
+            body += "print('memory=4096B')\n"
     path.write_text(body, encoding="utf-8")
     path.chmod(0o755)
     return path
@@ -136,3 +143,32 @@ def test_execute_marks_walltime_termination(tmp_path: Path) -> None:
     assert result.termination_reason == "walltime"
     assert result.exit_signal == 9
     assert result.return_value is None
+
+
+@pytest.mark.skipif(platform.system().lower() != "linux", reason="BenchExec backend is Linux-only")
+def test_probe_capability_requires_real_process_metrics(tmp_path: Path) -> None:
+    backend = BenchExecBackend(_fake_runexec(tmp_path / "runexec"))
+    capability = backend.probe_capability()
+    assert capability.installed is True
+    assert capability.controlled_ready is True
+    assert capability.backend_version == "runexec 3.31"
+    assert capability.reason is None
+
+
+@pytest.mark.skipif(platform.system().lower() != "linux", reason="BenchExec backend is Linux-only")
+def test_probe_capability_rejects_missing_memory_accounting(tmp_path: Path) -> None:
+    backend = BenchExecBackend(_fake_runexec(tmp_path / "runexec", omit_memory=True))
+    capability = backend.probe_capability()
+    assert capability.installed is True
+    assert capability.controlled_ready is False
+    assert capability.reason == "runexec probe did not provide process-tree memory measurement"
+
+
+@pytest.mark.skipif(platform.system().lower() != "linux", reason="BenchExec backend is Linux-only")
+def test_probe_capability_reports_missing_core_measurements(tmp_path: Path) -> None:
+    backend = BenchExecBackend(_fake_runexec(tmp_path / "runexec", missing_metrics=True))
+    capability = backend.probe_capability()
+    assert capability.installed is True
+    assert capability.controlled_ready is False
+    assert capability.reason is not None
+    assert "walltime and cputime" in capability.reason
