@@ -34,13 +34,16 @@ classifiers = [
 ]
 dependencies = [
   "pydantic>=2.8,<3",
+  "PyYAML>=6.0,<7",
   "typer>=0.12,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8,<10",
-  "ruff>=0.8",
+  # Pin schema/lint/test tooling so generated artifacts and CI do not drift silently.
+  "pydantic==2.13.5",
+  "pytest==9.1.1",
+  "ruff==0.16.7",
 ]
 
 [project.scripts]

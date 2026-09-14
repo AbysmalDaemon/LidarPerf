@@ -2355,3 +2355,37 @@ Status: Approved for implementation — Gate 1 approved 2026-09-14.
 ```
 
 **Learning:** verification must check the resulting content, not merely the success status of the automation that produced it. A green workflow proves execution success, not semantic correctness of the generated document.
+
+### Remote CI retries for PR #2
+
+The first remote CI pass for the protocol/schema implementation failed at Ruff before tests ran. Six formatting/static-style issues were reported across the new files: import grouping/order, one simplifiable conditional assignment, one overlong line, and test-file formatting. These were corrected in a follow-up commit.
+
+A second CI pass reduced the failure set to one `I001` import-block error in `scripts/export_schemas.py`. I initially misread Ruff's compact diagnostic and removed the blank line between standard-library and first-party imports. That was the wrong interpretation: the actual remaining issue was an **extra blank line after the import block**, not the section separator. This produced a third failed lint pass.
+
+**Fix:** restore the stdlib/first-party separator and remove the extra blank line between the final import and the module constant. This is a small formatting error, but it is recorded because the retry was caused by my diagnosis rather than by the project requirements.
+
+**Learning:** when a formatter/linter provides an auto-fixable structural diagnostic, do not infer the exact patch from abbreviated terminal context if the tool itself can be used as the authority. In this environment Ruff is only available in remote CI, so exact diagnostics and remote revalidation are necessary.
+
+After Ruff passed, CI reached the test suite and caught a more important publication error: `test_checked_in_json_schema_matches_model` failed because the JSON Schema committed through the connector had been manually reconstructed and did **not** exactly match Pydantic's generated schema. Differences included enum descriptions, definition ordering/default serialization, and the representation emitted for `JsonValue`.
+
+#### Root cause
+
+The local generated JSON Schema was correct and local tests passed. During connector publication, I manually supplied a schema payload instead of treating the generated artifact as machine-owned output. That created drift between source models and the checked-in derived artifact.
+
+#### Fix
+
+The schema is regenerated **from the committed Pydantic models on GitHub's runner** using `scripts/export_schemas.py`, rather than patched by hand. Ruff and pytest are then run against the regenerated working tree before it is committed.
+
+A related reproducibility issue was identified at the same time: exact generated-schema equality can drift when the Pydantic generator version changes. The runtime dependency remains compatible with a wider Pydantic 2.x range, but the development/schema-generation environment is now pinned to Pydantic 2.13.5. Ruff and pytest are also pinned for deterministic project CI. Upgrading these tools later must be an explicit maintenance change rather than an accidental change caused by a new package release.
+
+**Learning:** generated artifacts must remain generated artifacts, and the generator toolchain is part of their provenance. Never hand-maintain or manually reconstruct a checked-in schema whose exact equality to source models is itself an invariant.
+
+### Step 2 final remote verification
+
+The protocol/schema implementation was revalidated on a clean GitHub Actions matrix for Python 3.11, 3.12, and 3.13 after regenerating the checked-in JSON Schema from the pinned Pydantic 2.13.5 development environment. Ruff passed and all 28 tests passed on each supported Python version.
+
+The final implementation therefore verifies both source behavior and the generated-schema invariant in the same pinned toolchain used by CI.
+
+**Step 2 status:** complete and ready for merge as PR #2.
+
+**Next implementation step after merge:** deterministic synthetic conformance fixture plus the first versioned result-bundle models/checksum machinery.
