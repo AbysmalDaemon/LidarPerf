@@ -2,7 +2,8 @@ name: Validate and record Step 3
 
 on:
   push:
-    branches: [synthetic-fixture]
+    branches:
+      - synthetic-fixture
 
 permissions:
   contents: write
@@ -26,87 +27,22 @@ jobs:
       - name: Test
         run: pytest
       - name: Append Step 3 engineering record
+        env:
+          STEP3_LOG_B64: "LS0tCgojIyBQcm9qZWN0IGV4ZWN1dGlvbiBsb2cg4oCUIDIwMjYtMDktMTQg4oCUIFN0ZXAgMyBzeW50aGV0aWMgY29uZm9ybWFuY2UgZml4dHVyZQoKKipTdGF0dXM6KiogaW1wbGVtZW50YXRpb24gY29tcGxldGU7IHJlbW90ZSBwcmUtUFIgdmFsaWRhdGlvbiBwYXNzZWQgb24gUHl0aG9uIDMuMTMuCgojIyMgU3RhcnRpbmcgc3RhdGUKClBSICMyIChgZmVhdDogaW1wbGVtZW50IHByb3RvY29sIHNjaGVtYSBhbmQgdmFsaWRhdGlvbmApIHdhcyBtZXJnZWQgaW50byBgbWFpbmAuIFN0ZXAgMyB0aGVyZWZvcmUgc3RhcnRzIGZyb20gdGhlIGFwcHJvdmVkIHByb3RvY29sIHNlbWFudGljcyBhbHJlYWR5IHJlcHJlc2VudGVkIGluIGNvZGUuCgpUaGUgZ29hbCBvZiB0aGlzIHN0ZXAgaXMgZGVsaWJlcmF0ZWx5IG5hcnJvdzogY3JlYXRlIGEgcHJvamVjdC1vd25lZCBkZXRlcm1pbmlzdGljIExpREFSIGZpeHR1cmUgdGhhdCBjYW4gZXhlcmNpc2UgY29vcmRpbmF0ZSwgdGltZXN0YW1wLCBzZXJpYWxpemF0aW9uLCBtb3Rpb24tZGlzdG9ydGlvbiwgYW5kIGZ1dHVyZSBtZXRyaWMgbG9naWMgd2l0aG91dCByZXF1aXJpbmcgYW4gZXh0ZXJuYWwgcmVhbC13b3JsZCBkYXRhc2V0IG9yIGRhdGFzZXQgbGljZW5zZSBpbiByb3V0aW5lIENJLgoKIyMjIFdvcmsgY29tcGxldGVkCgpUaGUgc3ludGhldGljIGxheWVyIG5vdyBjb250YWluczoKCi0gaW1tdXRhYmxlIFB5ZGFudGljIG1vZGVscyBmb3IgZml4dHVyZSBjb25maWd1cmF0aW9uLCBwb3NlcywgcG9pbnRzLCBzY2FucywgYW5kIHRoZSBmaXh0dXJlIG1hbmlmZXN0OwotIGFuIGV4YWN0IGNvbnN0YW50LXNwZWVkIGNpcmN1bGFyIGBUX1dfQmAgdHJhamVjdG9yeTsKLSBhIGRldGVybWluaXN0aWMgc2NlbmUgY29udGFpbmluZyBncm91bmQsIHBhcmFsbGVsIHdhbGxzLCB2ZXJ0aWNhbCBwb2xlcywgYW5kIGFzeW1tZXRyaWMgYm94ZXM7Ci0gc2Nhbi1zdGFydCB2aXNpYmlsaXR5IGFuZCByYW5nZSBmaWx0ZXJpbmc7Ci0gZGV0ZXJtaW5pc3RpYyBwZXItcG9pbnQgYWNxdWlzaXRpb24tdGltZSBvZmZzZXRzIG92ZXIgYSAzNjAtZGVncmVlIHNjYW4gaW50ZXJ2YWw7Ci0gb3B0aW9uYWwgcm9sbGluZy1zY2FuIG1vdGlvbiBkaXN0b3J0aW9uIHVzaW5nIHRoZSBleGFjdCBib2R5IHBvc2UgYXQgZWFjaCBwb2ludCdzIGFjcXVpc2l0aW9uIHRpbWU7Ci0gb3B0aW9uYWwgZGV0ZXJtaW5pc3RpYyBwZXItYXhpcyBwb2ludCBub2lzZTsKLSBkZXRlcm1pbmlzdGljIHRpbWUtZGlzdHJpYnV0ZWQgcG9pbnQgc3Vic2FtcGxpbmc7Ci0gYSBzdGFibGUgZml4dHVyZSBpZGVudGl0eSBkZXJpdmVkIGZyb20gZ2VuZXJhdG9yIHZlcnNpb24gcGx1cyBjYW5vbmljYWwgY29uZmlndXJhdGlvbjsKLSBgbWFuaWZlc3QuanNvbmAsIGBncm91bmRfdHJ1dGgudHVtYCwgdGltZXN0YW1wZWQgYHNjYW5zL2luZGV4Lmpzb25gLCBhbmQgcGVyLXNjYW4gSlNPTkwgZmlsZXM7Ci0gYGxpZGFycGVyZiBzeW50aGV0aWMgZ2VuZXJhdGVgOwotIHVuaXQgYW5kIENMSSB0ZXN0cyBmb3IgZ2VvbWV0cnksIHRpbWluZywgZGV0ZXJtaW5pc20sIG5vaXNlLCBkaXN0b3J0aW9uLCBmaWxlIHNhZmV0eSwgYW5kIG1hbmlmZXN0IHNlbWFudGljcy4KCiMjIyBHZW9tZXRyeSBhbmQgdGltaW5nIHNlbWFudGljcwoKVGhlIGZpeHR1cmUgdXNlcyB0aGUgY2Fub25pY2FsIGBUX1dfQmAgY29udmVudGlvbi4gVGhlIHRyYWplY3RvcnkgaXMgYW4gYW5hbHl0aWMgY29uc3RhbnQtc3BlZWQgY2lyY3VsYXIgYXJjLCBhbGxvd2luZyB0aGUgZXhhY3QgYm9keSBwb3NlIHRvIGJlIGV2YWx1YXRlZCBhdCBhcmJpdHJhcnkgcG9pbnQtYWNxdWlzaXRpb24gdGltZXN0YW1wcyBpbnN0ZWFkIG9mIG51bWVyaWNhbGx5IGludGVncmF0aW5nIG1vdGlvbi4KCkxhbmRtYXJrcyBhcmUgc2VsZWN0ZWQgdXNpbmcgdGhlIHNjYW4tc3RhcnQgcG9zZS4gQWNxdWlzaXRpb24gb2Zmc2V0IGlzIGRlcml2ZWQgZnJvbSBzY2FuLXN0YXJ0IGF6aW11dGguIFdpdGggbW90aW9uIGRpc3RvcnRpb24gZGlzYWJsZWQsIHBvaW50IGNvb3JkaW5hdGVzIGFyZSBleHByZXNzZWQgaW4gdGhlIHNjYW4tc3RhcnQgYm9keSBmcmFtZS4gV2l0aCBkaXN0b3J0aW9uIGVuYWJsZWQsIHRoZSBzYW1lIHNlbGVjdGVkIGxhbmRtYXJrcyBhcmUgZXhwcmVzc2VkIGluIHRoZSBpbnN0YW50YW5lb3VzIGJvZHkgZnJhbWUgYXQgYWNxdWlzaXRpb24gdGltZS4gVGh1cyBkaXN0b3J0aW9uIGNoYW5nZXMgY29vcmRpbmF0ZXMgd2l0aG91dCBzaWxlbnRseSBjaGFuZ2luZyB0aGUgc2FtcGxlZCB3b3JsZCBsYW5kbWFya3MuCgpUaGUgbWFuaWZlc3QgcmVjb3JkcyB0aGUgZGlzdGluY3Rpb24gZXhwbGljaXRseSBhcyBgc2Nhbl9zdGFydF9ib2R5YCBvciBgYWNxdWlzaXRpb25fYm9keWAuCgojIyMgRGV0ZXJtaW5pc3RpYyBub2lzZSBkZXNpZ24KClRoZSBmaXJzdCBsb2NhbCBkcmFmdCB1c2VkIFB5dGhvbidzIGByYW5kb20uZ2F1c3NgLiBUaGF0IHdhcyByZXBsYWNlZCBiZWZvcmUgcHVibGljYXRpb24gYmVjYXVzZSBhIGNyb3NzLXZlcnNpb24gYml0d2lzZSBmaXh0dXJlIHNob3VsZCBub3QgZGVwZW5kIHVubmVjZXNzYXJpbHkgb24gcmFuZG9tLWxpYnJhcnkgaW1wbGVtZW50YXRpb24gZGV0YWlscy4KCk5vaXNlIGlzIG5vdyBkZXJpdmVkIGZyb20gU0hBLTI1NiBrZXllZCBieSBgKHNlZWQsIHNjYW5faW5kZXgsIGxhbmRtYXJrX2lkLCBheGlzKWAgYW5kIG1hcHBlZCB0aHJvdWdoIGEgc3RhbmRhcmRpemVkIHNpeC11bmlmb3JtIElyd2luLUhhbGwgY29uc3RydWN0aW9uLiBBIHBvaW50J3Mgbm9pc2UgaXMgdGhlcmVmb3JlIGluZGVwZW5kZW50IG9mIGl0ZXJhdGlvbiBvcmRlciBhbmQgb2YgYW55IGdsb2JhbCBSTkcgc3RyZWFtLiBUaGUgbWFuaWZlc3QgcmVjb3JkcyB0aGlzIG1vZGVsIGFzIGBoYXNoX2lyd2luX2hhbGxfNl92MWAuCgojIyMgU2VsZi1yZXZpZXcgaXNzdWVzIGNhdWdodCBiZWZvcmUgcHVibGljYXRpb24KCjEuICoqU2NhbiB0aW1lc3RhbXBzIHdlcmUgaW5pdGlhbGx5IGltcGxpY2l0LioqIFplcm8tcGFkZGVkIGZpbGVuYW1lcyBjb3JyZXNwb25kZWQgdG8gdHJhamVjdG9yeSByb3dzIGJ1dCBkaWQgbm90IGV4cGxpY2l0bHkgY2FycnkgdGltZXN0YW1wcy4gKipGaXg6KiogYWRkIGBzY2Fucy9pbmRleC5qc29uYCB3aXRoIHNjYW4gaW5kZXgsIGZpbGVuYW1lLCBgdGltZXN0YW1wX25zYCwgYW5kIHBvaW50IGNvdW50LgoyLiAqKlBvaW50LWNvb3JkaW5hdGUgc2VtYW50aWNzIHdlcmUgaW5pdGlhbGx5IGltcGxpY2l0LioqIFBvaW50LXRpbWUgb2Zmc2V0cyBhbG9uZSBkaWQgbm90IHN0YXRlIHdoZXRoZXIgYSBjb29yZGluYXRlIGxpdmVkIGluIHRoZSBzY2FuLXN0YXJ0IG9yIGFjcXVpc2l0aW9uLXRpbWUgYm9keSBmcmFtZS4gKipGaXg6KiogYWRkIGBwb2ludF9jb29yZGluYXRlX3NlbWFudGljc2AgYW5kIHRlc3QgYm90aCBjYXNlcy4KMy4gKipBbiBleGlzdGluZyBmaWxlIHVzZWQgYXMgdGhlIG91dHB1dCBwYXRoIHByb2R1Y2VkIGEgbG93LWxldmVsIHBhdGggZXJyb3IuKiogKipGaXg6KiogcmVqZWN0IGl0IGRlbGliZXJhdGVseSB3aXRoIGBGaWxlRXhpc3RzRXJyb3JgIGFuZCBuZXZlciB0b3VjaCB0aGUgZXhpc3RpbmcgcGF0aC4KCiMjIyBDcm9zcy12ZXJzaW9uIGdvbGRlbiBmaXh0dXJlCgpBIHNtYWxsIGZpeHR1cmUgZXhlcmNpc2luZyBib3RoIG5vbnplcm8gbm9pc2UgYW5kIG1vdGlvbiBkaXN0b3J0aW9uIGhhcyB0aGUgd2hvbGUtZGlyZWN0b3J5IFNIQS0yNTYgZ29sZGVuIGRpZ2VzdDoKCmBgYHRleHQKODRmNGI4ZWVkNzlhOTJkZTRjMmE4NGRmNTdmY2ExMzQwMmE3ZDgzZGZhOTJhZWM0YjNjZWVjM2VkOTQ4ZmEwYQpgYGAKClRoZSBzYW1lIGdvbGRlbiBkaWdlc3QgaXMgYXNzZXJ0ZWQgYnkgQ0kuIEFuIGludGVudGlvbmFsIGdlbmVyYXRvciBjaGFuZ2UgdGhhdCBtb2RpZmllcyBmaXh0dXJlIGJ5dGVzIG11c3QgdGhlcmVmb3JlIGJlIHZlcnNpb25lZCByYXRoZXIgdGhhbiBzaWxlbnRseSBkcmlmdGluZy4KCiMjIyBWYWxpZGF0aW9uCgpMb2NhbCBQeXRob24gMy4xMy41IHZhbGlkYXRpb24gY29tcGxldGVkIHdpdGggKio0MiBwYXNzaW5nIHRlc3RzKiosIHN1Y2Nlc3NmdWwgYGNvbXBpbGVhbGxgLCBhbmQgbm8gUHl0aG9uIGxpbmVzIGFib3ZlIHRoZSByZXBvc2l0b3J5J3MgMTAwLWNoYXJhY3RlciBSdWZmIGxpbWl0LiBUaGUgZXhlY3V0aW9uIGNvbnRhaW5lciByZW1haW5zIHVuYWJsZSB0byBpbnN0YWxsIFJ1ZmYgYmVjYXVzZSBpdCBoYXMgbm8gRE5TL1B5UEkgYWNjZXNzLCBzbyB0aGUgYnJhbmNoIHdhcyB2YWxpZGF0ZWQgYWdhaW4gb24gR2l0SHViJ3MgY2xlYW4gUHl0aG9uIDMuMTMgcnVubmVyIGJlZm9yZSB0aGlzIHJlY29yZCB3YXMgY29tbWl0dGVkLiBSdWZmIGFuZCBweXRlc3QgYm90aCBwYXNzZWQgdGhlcmUuCgpVbmxpa2UgUFIgIzIsIFN0ZXAgMyB3YXMgYmF0Y2hlZCBhbmQgbG9jYWxseSB2YWxpZGF0ZWQgYmVmb3JlIGl0cyBmaXJzdCByZW1vdGUgcHVibGljYXRpb24gcmF0aGVyIHRoYW4gdXNpbmcgQ0kgYXMgYW4gaXRlcmF0aXZlIGZvcm1hdHRlci9kZWJ1Z2dlci4KCiMjIyBSZW1vdGUgd29ya2Zsb3cgbWlzdGFrZSBiZWZvcmUgdmFsaWRhdGlvbgoKVGhlIGZpcnN0IG9uZS1zaG90IHByZS1QUiB2YWxpZGF0aW9uIHdvcmtmbG93IHdhcyByZWplY3RlZCBieSBHaXRIdWIgYmVmb3JlIGFueSBqb2Igc3RhcnRlZCBiZWNhdXNlIEkgZW1iZWRkZWQgYSBzaGVsbCBoZXJlLWRvY3VtZW50IHdob3NlIGJvZHkgd2FzIG5vdCBpbmRlbnRlZCBhcyBZQU1MIGJsb2NrIGNvbnRlbnQuICoqTm8gcHJvamVjdCB0ZXN0IG9yIGxpbnQgc3RlcCByYW4gaW4gdGhhdCBmYWlsZWQgd29ya2Zsb3cuKiogVGhlIGNvZGUgaXRzZWxmIHdhcyBub3QgaW1wbGljYXRlZC4KCioqRml4OioqIHJlcGxhY2UgdGhlIGZyYWdpbGUgbXVsdGlsaW5lIFlBTUwgcGF5bG9hZCB3aXRoIGEgYmFzZTY0LWVuY29kZWQgbG9nIHBheWxvYWQsIHZhbGlkYXRlIHRoZSB3b3JrZmxvdyBzeW50YXggbG9jYWxseSwgYW5kIHJlcnVuIHRoZSBwcmUtUFIgdmFsaWRhdGlvbiBvbmNlLiBUaGlzIGZhaWx1cmUgaXMgcmV0YWluZWQgaW4gdGhlIHByb2plY3QgcmVjb3JkIGJlY2F1c2UgaXQgd2FzIGEgdG9vbGluZyBtaXN0YWtlIGluIGhvdyBJIHB1Ymxpc2hlZCB0aGUgbG9nLgoKIyMjIFNjb3BlIGJvdW5kYXJ5CgpUaGlzIGlzIGEgY29uZm9ybWFuY2UvQ0kgZml4dHVyZSwgKipub3QgYSByZWFsLXdvcmxkIHJhbmtpbmcgZGF0YXNldCoqLiBJdHMgYW5hbHl0aWMgdHJhamVjdG9yeSBhbmQgc2ltcGxlIGdlb21ldHJ5IGFyZSBkZXNpZ25lZCB0byBleHBvc2UgY29udmVudGlvbiBhbmQgcGlwZWxpbmUgYnVncy4gTm8gcmVzZWFyY2ggY2xhaW0gYWJvdXQgcmVhbC13b3JsZCBvZG9tZXRyeSBhY2N1cmFjeSBzaG91bGQgYmUgYmFzZWQgb24gcGVyZm9ybWFuY2Ugb24gdGhpcyBmaXh0dXJlLgoKIyMjIE5leHQgc3RlcCBhZnRlciBtZXJnZQoKU3RlcCA0OiB2ZXJzaW9uZWQgcmVzdWx0LWJ1bmRsZSBtb2RlbHMsIFNIQS0yNTYgcGF5bG9hZCBjaGVja3N1bXMsIGltbXV0YWJsZSBidW5kbGUgc2VtYW50aWNzLCBhbmQgYGxpZGFycGVyZiB2ZXJpZnlgLgo="
         shell: bash
         run: |
-          marker='## Project execution log — 2026-09-14 — Step 3 synthetic conformance fixture'
-          if grep -Fq "$marker" LidarPerf_research_execution_plan.md; then
-            exit 0
-          fi
-          cat >> LidarPerf_research_execution_plan.md <<'EOF'
+          python - <<'PYLOG'
+          import base64
+          import os
+          from pathlib import Path
 
----
-
-## Project execution log — 2026-09-14 — Step 3 synthetic conformance fixture
-
-**Status:** implementation complete; remote pre-PR validation passed on Python 3.13.
-
-### Starting state
-
-PR #2 (`feat: implement protocol schema and validation`) was merged into `main`. Step 3 therefore starts from the approved protocol semantics already represented in code.
-
-The goal of this step is deliberately narrow: create a project-owned deterministic LiDAR fixture that can exercise coordinate, timestamp, serialization, motion-distortion, and future metric logic without requiring an external real-world dataset or dataset license in routine CI.
-
-### Work completed
-
-The synthetic layer now contains:
-
-- immutable Pydantic models for fixture configuration, poses, points, scans, and the fixture manifest;
-- an exact constant-speed circular `T_W_B` trajectory;
-- a deterministic scene containing ground, parallel walls, vertical poles, and asymmetric boxes;
-- scan-start visibility and range filtering;
-- deterministic per-point acquisition-time offsets over a 360-degree scan interval;
-- optional rolling-scan motion distortion using the exact body pose at each point's acquisition time;
-- optional deterministic per-axis point noise;
-- deterministic time-distributed point subsampling;
-- a stable fixture identity derived from generator version plus canonical configuration;
-- `manifest.json`, `ground_truth.tum`, timestamped `scans/index.json`, and per-scan JSONL files;
-- `lidarperf synthetic generate`;
-- unit and CLI tests for geometry, timing, determinism, noise, distortion, file safety, and manifest semantics.
-
-### Geometry and timing semantics
-
-The fixture uses the canonical `T_W_B` convention. The trajectory is an analytic constant-speed circular arc, allowing the exact body pose to be evaluated at arbitrary point-acquisition timestamps instead of numerically integrating motion.
-
-Landmarks are selected using the scan-start pose. Acquisition offset is derived from scan-start azimuth. With motion distortion disabled, point coordinates are expressed in the scan-start body frame. With distortion enabled, the same selected landmarks are expressed in the instantaneous body frame at acquisition time. Thus distortion changes coordinates without silently changing the sampled world landmarks.
-
-The manifest records the distinction explicitly as `scan_start_body` or `acquisition_body`.
-
-### Deterministic noise design
-
-The first local draft used Python's `random.gauss`. That was replaced before publication because a cross-version bitwise fixture should not depend unnecessarily on random-library implementation details.
-
-Noise is now derived from SHA-256 keyed by `(seed, scan_index, landmark_id, axis)` and mapped through a standardized six-uniform Irwin-Hall construction. A point's noise is therefore independent of iteration order and of any global RNG stream. The manifest records this model as `hash_irwin_hall_6_v1`.
-
-### Self-review issues caught before publication
-
-1. **Scan timestamps were initially implicit.** Zero-padded filenames corresponded to trajectory rows but did not explicitly carry timestamps. **Fix:** add `scans/index.json` with scan index, filename, `timestamp_ns`, and point count.
-2. **Point-coordinate semantics were initially implicit.** Point-time offsets alone did not state whether a coordinate lived in the scan-start or acquisition-time body frame. **Fix:** add `point_coordinate_semantics` and test both cases.
-3. **An existing file used as the output path produced a low-level path error.** **Fix:** reject it deliberately with `FileExistsError` and never touch the existing path.
-
-### Cross-version golden fixture
-
-A small fixture exercising both nonzero noise and motion distortion has the whole-directory SHA-256 golden digest:
-
-```text
-84f4b8eed79a92de4c2a84df57fca13402a7d83dfa92aec4b3ceec3ed948fa0a
-```
-
-The same golden digest is asserted by CI. An intentional generator change that modifies fixture bytes must therefore be versioned rather than silently drifting.
-
-### Validation
-
-Local Python 3.13.5 validation completed with **42 passing tests**, successful `compileall`, and no Python lines above the repository's 100-character Ruff limit. The execution container remains unable to install Ruff because it has no DNS/PyPI access, so the branch was validated again on GitHub's clean Python 3.13 runner before this record was committed. Ruff and pytest both passed there.
-
-Unlike PR #2, Step 3 was batched and locally validated before its first remote publication rather than using CI as an iterative formatter/debugger.
-
-### Scope boundary
-
-This is a conformance/CI fixture, **not a real-world ranking dataset**. Its analytic trajectory and simple geometry are designed to expose convention and pipeline bugs. No research claim about real-world odometry accuracy should be based on performance on this fixture.
-
-### Next step after merge
-
-Step 4: versioned result-bundle models, SHA-256 payload checksums, immutable bundle semantics, and `lidarperf verify`.
-EOF
+          path = Path("LidarPerf_research_execution_plan.md")
+          marker = "## Project execution log — 2026-09-14 — Step 3 synthetic conformance fixture"
+          current = path.read_text(encoding="utf-8")
+          if marker not in current:
+              addition = base64.b64decode(os.environ["STEP3_LOG_B64"]).decode("utf-8")
+              path.write_text(current.rstrip() + "\n\n" + addition, encoding="utf-8")
+          PYLOG
       - name: Remove one-shot workflow and commit record
         shell: bash
         run: |
