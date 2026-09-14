@@ -19,7 +19,7 @@ jobs:
       - name: Assemble approved specification and project record
         run: |
           cat .bootstrap/spec/part-* > SPEC.md
-          gzip -dc .bootstrap/plan.md.gz > LidarPerf_research_execution_plan.md
+          cat .bootstrap/plan-gzb64/part-* | base64 -d | gzip -dc > LidarPerf_research_execution_plan.md
           rm -rf .bootstrap
           rm -f .github/workflows/bootstrap-docs.yml
       - name: Commit assembled documents
