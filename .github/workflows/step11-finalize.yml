@@ -29,7 +29,13 @@ jobs:
           jq -e '.performance_comparable == false' docs/validation/step11_compare_step9_step10.json
           jq -e '.regression_comparable == false' docs/validation/step11_compare_step9_step10.json
       - name: Update documentation and living record
-        run: python scripts/step11_finalize_tmp.py
+        run: |
+          python scripts/step11_finalize_tmp.py
+          cat >> LidarPerf_research_execution_plan.md <<'EOF'
+
+          8. Finalize workflow run `35011531083` generated the comparison evidence and documentation successfully, but its validation step failed because `ruff check .` also linted the temporary documentation patcher and reported long string literals. No permanent closure changes were committed by that failed run. The corrected closure removes temporary scaffolding before linting the permanent tree.
+          EOF
+          rm scripts/step11_finalize_tmp.py
       - name: Validate final Step 11 tree
         run: |
           ruff check .
@@ -37,11 +43,9 @@ jobs:
           lidarperf compare docs/validation/step9_kiss_hilti.lperf docs/validation/step10_kiss_hilti_repeated.lperf
       - name: Commit closure
         run: |
-          git rm .github/workflows/step11-finalize.yml scripts/step11_finalize_tmp.py
+          git rm .github/workflows/step11-finalize.yml
           git add -A
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'docs: close Step 11 semantic comparator'
           git push
-
-# Trigger after the workflow exists on the branch.
