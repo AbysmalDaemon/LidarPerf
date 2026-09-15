@@ -48,6 +48,14 @@ The Step 10 hosted bundle remains `exploratory` even with five measured trials. 
 
 Step 11 implements `lidarperf compare`. Comparability is dimension-aware: accuracy can be comparable even when performance is not. The durable Step 11 report compares the real Step 9 and Step 10 bundles and finds accuracy semantics compatible, while strict performance/regression comparison is rejected because the hosted evidence lacks controlled physical-host identity, explicit CPU allocation/paired execution, and authoritative performance status. The comparator still reports raw metric/resource deltas, but does not rank them.
 
+## Validation snapshot
+
+The current real-evidence path uses KISS-ICP on the Hilti 2022 `basement_2` sequence. The visual below summarizes the committed Step 9–11 artifacts rather than presenting a publication-grade estimator ranking.
+
+![LidarPerf validation snapshot](docs/validation/lidarperf_validation_snapshot.svg)
+
+The important result is not that two bars happen to match: LidarPerf can prove that the **accuracy evidence is comparable** while simultaneously refusing a strict **performance/regression** claim from ordinary GitHub-hosted runners. The displayed 3.5747 s median wall time is therefore descriptive integration evidence only. The short-prefix rotation APE remains an explicit scientific caveat.
+
 ## Planned CLI
 
 The final interface is expected to grow toward:
