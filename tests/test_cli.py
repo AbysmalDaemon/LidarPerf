@@ -36,6 +36,39 @@ def test_protocol_validate_invalid_file(tmp_path) -> None:
     assert "INVALID:" in result.stderr
 
 
+def test_compare_real_validation_bundles() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "docs/validation/step9_kiss_hilti.lperf",
+            "docs/validation/step10_kiss_hilti_repeated.lperf",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Accuracy comparable:    YES" in result.stdout
+    assert "Performance comparable: NO" in result.stdout
+    assert "NO STRICT PERFORMANCE RANKING" in result.stdout
+    assert "ape.translation.rmse_m" in result.stdout
+    assert "wall_time_s" in result.stdout
+
+
+def test_compare_json_output() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "compare",
+            "docs/validation/step10_kiss_hilti_repeated.lperf",
+            "docs/validation/step10_kiss_hilti_repeated.lperf",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0
+    assert '"schema_version": "lidarperf.comparison.v1"' in result.stdout
+    assert '"accuracy_comparable": true' in result.stdout
+    assert '"performance_comparable": false' in result.stdout
+
+
 def test_synthetic_generate(tmp_path) -> None:
     output = tmp_path / "synthetic"
     result = runner.invoke(
