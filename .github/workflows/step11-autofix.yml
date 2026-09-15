@@ -17,19 +17,41 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: Repair Typer list option default
+      - name: Repair Typer option declaration
         run: |
           python - <<'PY'
           from pathlib import Path
+
           path = Path('src/lidarperf/cli.py')
           text = path.read_text()
-          text = text.replace(
-              'declare_change: list[str] = typer.Option(\n        [],',
-              'declare_change: list[str] | None = typer.Option(\n        None,',
-          )
+          old = '''    declare_change: list[str] = typer.Option(
+              [],
+              "--declare-change",
+              help="Declare config, build_environment, or dependencies as an intentional change.",
+          ),
+          '''
+          if old not in text:
+              old = '''    declare_change: list[str] = typer.Option(
+                  [],
+                  "--declare-change",
+                  help="Declare config, build_environment, or dependencies as an intentional change.",
+              ),
+              '''
+          new = '''    declare_change: Annotated[
+              list[str] | None,
+              typer.Option(
+                  "--declare-change",
+                  help="Declare config, build_environment, or dependencies as an intentional change.",
+              ),
+          ] = None,
+          '''
+          if old not in text:
+              raise SystemExit('could not find declare_change option block')
+          text = text.replace(old, new, 1)
           text = text.replace(
               'declared_differences=set(declare_change),',
               'declared_differences=set(declare_change or ()),'
+              1,
           )
           path.write_text(text)
           PY
@@ -49,5 +71,3 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix: validate semantic comparator implementation'
           git push
-
-# Triggered after the workflow existed on the branch so push evaluation sees it.
