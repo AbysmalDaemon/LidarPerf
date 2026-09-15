@@ -81,7 +81,9 @@ class _BundleView:
         self.root = root
         self.manifest = ResultManifest.model_validate_json((root / "manifest.json").read_text())
         self.dataset = DatasetRecord.model_validate_json((root / "dataset.json").read_text())
-        self.environment = EnvironmentRecord.model_validate_json((root / "environment.json").read_text())
+        self.environment = EnvironmentRecord.model_validate_json(
+            (root / "environment.json").read_text()
+        )
         self.method = MethodRecord.model_validate_json((root / "method.json").read_text())
         self.protocol = load_protocol(root / "protocol.yaml").document
         self.metrics = _numeric_metrics(root)
@@ -115,10 +117,11 @@ def _numeric_metrics(root: Path) -> dict[str, float]:
     aggregate_path = root / "aggregate.json"
     if aggregate_path.is_file():
         aggregate = _read_json(aggregate_path)
-        trial_metrics = aggregate.get("metrics", {}).get("trial_metrics", {})
+        metrics = aggregate.get("metrics", {})
+        metric_values = metrics.get("trial_metrics", metrics)
         return {
             key: scalar
-            for key, value in trial_metrics.items()
+            for key, value in metric_values.items()
             if (scalar := _summary_value(value)) is not None
         }
 
@@ -134,12 +137,13 @@ def _numeric_resources(root: Path) -> dict[str, float]:
     aggregate_path = root / "aggregate.json"
     if aggregate_path.is_file():
         aggregate = _read_json(aggregate_path)
-        resources = aggregate.get("metrics", {}).get("resources", {})
-        return {
-            key: scalar
-            for key, value in resources.items()
-            if (scalar := _summary_value(value)) is not None
-        }
+        resources = aggregate.get("metrics", {}).get("resources")
+        if isinstance(resources, dict):
+            return {
+                key: scalar
+                for key, value in resources.items()
+                if (scalar := _summary_value(value)) is not None
+            }
 
     resources = _read_json(root / "trials" / "0001" / "resources.json").get("values", {})
     return {
@@ -149,7 +153,9 @@ def _numeric_resources(root: Path) -> dict[str, float]:
     }
 
 
-def _scalar_changes(baseline: dict[str, float], candidate: dict[str, float]) -> dict[str, ScalarChange]:
+def _scalar_changes(
+    baseline: dict[str, float], candidate: dict[str, float]
+) -> dict[str, ScalarChange]:
     changes: dict[str, ScalarChange] = {}
     for key in sorted(baseline.keys() & candidate.keys()):
         before = baseline[key]
@@ -470,7 +476,13 @@ def compare_bundles(
             code="SOFTWARE_ENVIRONMENT",
             baseline=baseline.environment.software,
             candidate=candidate.environment.software,
-            reason="unexplained software-environment differences forbid strict comparison",
+            reason=(
+                "software environments must match unless dependencies are the declared subject"
+            ),
+            predicate=(
+                baseline.environment.software == candidate.environment.software
+                or "dependencies" in declared_differences
+            ),
         ),
         _check(
             checks,
@@ -488,7 +500,9 @@ def compare_bundles(
     performance_comparable = all(performance_results)
     performance_authoritative = performance_comparable
 
-    protocol_equal = baseline.manifest.protocol.resolved_sha256 == candidate.manifest.protocol.resolved_sha256
+    protocol_equal = (
+        baseline.manifest.protocol.resolved_sha256 == candidate.manifest.protocol.resolved_sha256
+    )
     config_equal = baseline.method.config_sha256 == candidate.method.config_sha256
     build_equal = baseline.method.build == candidate.method.build
     dependencies_equal = baseline.environment.software == candidate.environment.software

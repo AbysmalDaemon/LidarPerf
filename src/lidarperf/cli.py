@@ -195,8 +195,7 @@ def compare_results(
 
     if not report.performance_comparable:
         typer.echo(
-            "NO STRICT PERFORMANCE RANKING: "
-            "performance evidence is not strictly comparable."
+            "NO STRICT PERFORMANCE RANKING: performance evidence is not strictly comparable."
         )
 
 
