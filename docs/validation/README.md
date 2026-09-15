@@ -8,3 +8,13 @@ This directory contains durable integration evidence produced while building Lid
 - `step11_compare_step9_step10.json` is the first durable semantic-comparison report. It proves that the Step 9 and Step 10 bundles are accuracy-comparable while strict performance and regression comparison are rejected; reported timing/resource deltas remain descriptive only.
 
 Use `lidarperf verify <bundle>` to validate a committed `.lperf` directory. Measurement strength is determined by both repetition requirements and environment requirements. In particular, five measured trials alone do not make a result `controlled`; the v0.1 specification also requires a stable self-hosted or otherwise controlled Linux benchmark environment with the declared controls.
+
+Reproduce the committed Step 11 semantic decision with:
+
+```bash
+lidarperf compare \
+  docs/validation/step9_kiss_hilti.lperf \
+  docs/validation/step10_kiss_hilti_repeated.lperf
+```
+
+Add `--json` to obtain the machine-readable `lidarperf.comparison.v1` report shape used by `step11_compare_step9_step10.json`.
