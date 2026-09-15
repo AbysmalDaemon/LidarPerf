@@ -6,8 +6,10 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from lidarperf.comparison import ComparisonError, compare_bundles
+from lidarperf.spec import sha256_fingerprint
 
 STEP9 = Path("docs/validation/step9_kiss_hilti.lperf")
 STEP10 = Path("docs/validation/step10_kiss_hilti_repeated.lperf")
@@ -29,7 +31,10 @@ def _controlled_copy(tmp_path: Path) -> Path:
     manifest_path = bundle / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["measurement_class"] = "controlled"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     environment_path = bundle / "environment.json"
     environment = json.loads(environment_path.read_text(encoding="utf-8"))
@@ -50,7 +55,8 @@ def _controlled_copy(tmp_path: Path) -> Path:
     )
     environment["host"]["cpu"]["governors"] = ["performance"]
     environment_path.write_text(
-        json.dumps(environment, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(environment, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     _refresh_checksums(bundle)
     return bundle
@@ -86,10 +92,19 @@ def test_declared_config_difference_is_explicit_not_silent(tmp_path: Path) -> No
     candidate.parent.mkdir(parents=True)
     shutil.copytree(baseline, candidate)
 
+    config_path = candidate / "config" / "algorithm.yaml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["step11_test_variant"] = True
+    config_text = yaml.safe_dump(config, sort_keys=True, allow_unicode=True)
+    config_path.write_text(config_text, encoding="utf-8")
+
     method_path = candidate / "method.json"
     method = json.loads(method_path.read_text(encoding="utf-8"))
-    method["config_sha256"] = "a" * 64
-    method_path.write_text(json.dumps(method, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    method["config_sha256"] = sha256_fingerprint(yaml.safe_load(config_text))
+    method_path.write_text(
+        json.dumps(method, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     _refresh_checksums(candidate)
 
     strict = compare_bundles(baseline, candidate)
