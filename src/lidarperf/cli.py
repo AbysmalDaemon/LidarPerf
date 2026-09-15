@@ -11,6 +11,7 @@ import typer
 
 from ._version import __version__
 from .bundle import VerificationStatus, verify_bundle
+from .comparison import ComparisonError, ScalarChange, compare_bundles
 from .host import DoctorSeverity, assess_host, probe_host
 from .spec import ProtocolLoadError, load_protocol
 from .synthetic import SyntheticFixtureConfig, write_fixture
@@ -31,6 +32,14 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"lidarperf {__version__}")
         raise typer.Exit()
+
+
+def _format_change(name: str, change: ScalarChange) -> str:
+    relative = "n/a" if change.relative_percent is None else f"{change.relative_percent:+.3f}%"
+    return (
+        f"  {name}: {change.baseline:.9g} -> {change.candidate:.9g} "
+        f"(delta={change.absolute:+.9g}, {relative})"
+    )
 
 
 @app.callback(invoke_without_command=True)
@@ -110,6 +119,77 @@ def verify_result(path: Path) -> None:
         typer.echo(f"{issue.severity.value.upper()} [{issue.code}] {issue.message}", file=stream)
     if report.status == VerificationStatus.INVALID:
         raise typer.Exit(code=2)
+
+
+@app.command("compare")
+def compare_results(
+    baseline: Path,
+    candidate: Path,
+    json_output: bool = typer.Option(False, "--json", help="Emit the comparison report as JSON."),
+    declare_change: list[str] = typer.Option(
+        [],
+        "--declare-change",
+        help="Declare config, build_environment, or dependencies as an intentional change.",
+    ),
+) -> None:
+    """Compare two verified result bundles without silently assuming comparability."""
+
+    try:
+        report = compare_bundles(
+            baseline,
+            candidate,
+            declared_differences=set(declare_change),
+        )
+    except (ComparisonError, OSError, ValueError) as exc:
+        typer.echo(f"INVALID COMPARISON: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    if json_output:
+        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+        return
+
+    typer.echo("LidarPerf comparison")
+    typer.echo(f"baseline:  {report.baseline_result_id}")
+    typer.echo(f"candidate: {report.candidate_result_id}")
+    typer.echo(f"Accuracy comparable:    {'YES' if report.accuracy_comparable else 'NO'}")
+    typer.echo(f"Performance comparable: {'YES' if report.performance_comparable else 'NO'}")
+    typer.echo(f"Performance authority:  {'YES' if report.performance_authoritative else 'NO'}")
+    typer.echo(f"Regression comparable:  {'YES' if report.regression_comparable else 'NO'}")
+
+    failed = [check for check in report.checks if not check.comparable]
+    if failed:
+        typer.echo("reasons:")
+        for check in failed:
+            typer.echo(f"  ✗ [{check.scope}:{check.code}] {check.reason}")
+    else:
+        typer.echo("reasons: none")
+
+    if report.observed_differences:
+        typer.echo("observed differences:")
+        for difference in report.observed_differences:
+            typer.echo(f"  - {difference}")
+
+    key_metrics = (
+        "ape.translation.rmse_m",
+        "ape.rotation.rmse_deg",
+        "coverage.temporal_fraction",
+        "coverage.distance_fraction",
+    )
+    shown_metrics = [name for name in key_metrics if name in report.metric_changes]
+    if shown_metrics:
+        typer.echo("accuracy changes:")
+        for name in shown_metrics:
+            typer.echo(_format_change(name, report.metric_changes[name]))
+
+    key_resources = ("wall_time_s", "cpu_time_s", "peak_memory_bytes")
+    shown_resources = [name for name in key_resources if name in report.resource_changes]
+    if shown_resources:
+        typer.echo("resource changes:")
+        for name in shown_resources:
+            typer.echo(_format_change(name, report.resource_changes[name]))
+
+    if not report.performance_comparable:
+        typer.echo("NO STRICT PERFORMANCE RANKING: performance evidence is not strictly comparable.")
 
 
 @protocol_app.command("validate")
