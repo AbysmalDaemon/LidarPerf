@@ -125,12 +125,17 @@ def verify_result(path: Path) -> None:
 def compare_results(
     baseline: Path,
     candidate: Path,
-    json_output: bool = typer.Option(False, "--json", help="Emit the comparison report as JSON."),
-    declare_change: list[str] = typer.Option(
-        [],
-        "--declare-change",
-        help="Declare config, build_environment, or dependencies as an intentional change.",
-    ),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Emit the comparison report as JSON."),
+    ] = False,
+    declare_change: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--declare-change",
+            help="Declare config, build_environment, or dependencies as an intentional change.",
+        ),
+    ] = None,
 ) -> None:
     """Compare two verified result bundles without silently assuming comparability."""
 
@@ -138,7 +143,7 @@ def compare_results(
         report = compare_bundles(
             baseline,
             candidate,
-            declared_differences=set(declare_change),
+            declared_differences=set(declare_change or ()),
         )
     except (ComparisonError, OSError, ValueError) as exc:
         typer.echo(f"INVALID COMPARISON: {exc}", err=True)
@@ -189,7 +194,10 @@ def compare_results(
             typer.echo(_format_change(name, report.resource_changes[name]))
 
     if not report.performance_comparable:
-        typer.echo("NO STRICT PERFORMANCE RANKING: performance evidence is not strictly comparable.")
+        typer.echo(
+            "NO STRICT PERFORMANCE RANKING: "
+            "performance evidence is not strictly comparable."
+        )
 
 
 @protocol_app.command("validate")
