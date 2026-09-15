@@ -3329,3 +3329,11 @@ This is the intended result. Both bundles use compatible dataset/reference/traje
 Step 11 is complete when the durable comparison report and documentation are committed, the exact final PR head passes Python 3.11/3.12/3.13 CI, PR #12 is squash-merged, and post-merge `main` CI is green. Step 12 then builds the regression decision engine on top of this comparator rather than duplicating comparability logic.
 
 8. Finalize workflow run `35011531083` generated the comparison evidence and documentation successfully, but its validation step failed because `ruff check .` also linted the temporary documentation patcher and reported long string literals. No permanent closure changes were committed by that failed run. The corrected closure removes temporary scaffolding before linting the permanent tree.
+
+### Step 11 post-merge closure — 2026-09-15
+
+- PR #12 (`feat: add semantic result comparator`) was squash-merged as `97fcaf90478bac8b19486c1697aefccd62057946`.
+- Exact final PR head `0825eeca2bcb537157dd7a1def917eab3e787a75` passed CI run `35011827443` on Python 3.11, 3.12, and 3.13.
+- Post-merge `main` CI run `35011938896` passed on Python 3.11, 3.12, and 3.13.
+- Final Step 11 validation contains 141 passing tests, green Ruff, successful real Step 9 → Step 10 CLI comparison, and durable `docs/validation/step11_compare_step9_step10.json` evidence.
+- Step 11 is complete. Step 12 is the regression decision engine: baseline/candidate paired experiments, accuracy/correctness gates, thresholds/uncertainty, and PASS/FAIL/INCONCLUSIVE decisions built on the Step 11 comparator rather than duplicated comparability rules.
