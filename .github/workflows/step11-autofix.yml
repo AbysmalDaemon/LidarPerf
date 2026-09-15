@@ -49,3 +49,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix: validate semantic comparator implementation'
           git push
+
+# Triggered after the workflow existed on the branch so push evaluation sees it.
