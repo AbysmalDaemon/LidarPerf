@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, and repeated-run/repeatability analysis are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, and semantic result comparison are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -38,12 +38,15 @@ The package currently includes:
 - a thin evalio execution adapter, validated with real KISS-ICP 1.3.0 on the public Hilti 2022 `basement_2` sequence;
 - a single-trial orchestration path that connects evalio execution, BenchExec accounting, LidarPerf trajectory evaluation, provenance capture, immutable bundle writing, and independent bundle verification;
 - a repeated-run orchestration path with explicit warmups, retained failed trials, per-metric/resource distributions, and all-pairs estimator-output repeatability recomputed by the verifier from immutable trajectory payloads.
+- a semantic comparator that independently verifies both bundles, evaluates accuracy/performance/regression comparability separately, enumerates evidence differences, and refuses strict performance ranking when required semantics are missing or incompatible.
 
 Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
 
 The committed Step 9 result is intentionally `exploratory`: it contains one measured trial. Step 10 adds explicit warmups and repeated measured trials, scalar runtime/resource distributions, estimator-output repeatability, and verifier-side aggregate recomputation. The durable Step 10 integration bundle is `docs/validation/step10_kiss_hilti_repeated.lperf/`: one warmup plus five measured KISS-ICP/Hilti executions, all successful and independently verified.
 
 The Step 10 hosted bundle remains `exploratory` even with five measured trials. The specification requires a stable self-hosted or otherwise controlled Linux machine, explicit CPU allocation/thread policy, recorded governor state, controlled storage, and no swap pressure before a result may claim `controlled` strength. Ordinary GitHub-hosted runners therefore validate the repeated-run machinery but are not authoritative performance baselines.
+
+Step 11 implements `lidarperf compare`. Comparability is dimension-aware: accuracy can be comparable even when performance is not. The durable Step 11 report compares the real Step 9 and Step 10 bundles and finds accuracy semantics compatible, while strict performance/regression comparison is rejected because the hosted evidence lacks controlled physical-host identity, explicit CPU allocation/paired execution, and authoritative performance status. The comparator still reports raw metric/resource deltas, but does not rank them.
 
 ## Planned CLI
 
@@ -68,6 +71,7 @@ lidarperf protocol validate protocols/lo/se3_v1.yaml
 lidarperf protocol validate protocols/lio/se3_v1.yaml
 lidarperf synthetic generate ./synthetic-fixture --poses 240
 lidarperf verify ./result.lperf
+lidarperf compare baseline.lperf candidate.lperf
 ```
 
 `doctor` performs a read-only host probe and reports benchmark-relevant operating-system, CPU/topology, affinity, governor, memory/swap, cgroup, storage, NVIDIA/CUDA, system-load, power, and BenchExec capability metadata. It does not silently tune or modify the machine. `--json` emits the complete versioned `lidarperf.doctor.v1` report. Passing `--data-path` also classifies the dataset filesystem and warns about network storage.
@@ -79,6 +83,8 @@ The host fingerprint intentionally excludes usernames, hostnames, MAC addresses,
 `synthetic generate` creates a tiny project-owned LiDAR sequence for conformance and CI testing. The generated fixture contains exact `T_W_B` TUM ground truth, per-scan point files, a timestamped scan index, and an explicit manifest. It is deliberately **not** a real-world ranking dataset.
 
 `verify` validates a `.lperf` directory's versioned metadata, protocol/config provenance links, declared file inventory, execution-log layout, SHA-256 payload checksums, trial-count consistency, and the minimum trial count required by the declared measurement class. It returns `VALID`, `VALID WITH WARNINGS`, or `INVALID`.
+
+`compare` verifies both bundles first and emits a versioned `lidarperf.comparison.v1` report. It checks accuracy, performance, and regression comparability separately against the v0.1 specification; reports all failed checks and observed evidence differences; summarizes common accuracy/resource scalar changes; and never converts incomparable evidence into a strict performance ranking. Intentional configuration, build-environment, or dependency changes can be declared explicitly with repeated `--declare-change` options rather than being silently ignored. `--json` emits the complete machine-readable report.
 
 ### evalio backend
 
