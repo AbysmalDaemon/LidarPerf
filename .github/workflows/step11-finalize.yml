@@ -43,3 +43,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'docs: close Step 11 semantic comparator'
           git push
+
+# Trigger after the workflow exists on the branch.
