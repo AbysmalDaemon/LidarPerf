@@ -50,7 +50,7 @@ jobs:
           text = text.replace(old, new, 1)
           text = text.replace(
               'declared_differences=set(declare_change),',
-              'declared_differences=set(declare_change or ()),'
+              'declared_differences=set(declare_change or ()),' ,
               1,
           )
           path.write_text(text)
