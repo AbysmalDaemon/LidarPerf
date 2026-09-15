@@ -3337,3 +3337,19 @@ Step 11 is complete when the durable comparison report and documentation are com
 - Post-merge `main` CI run `35011938896` passed on Python 3.11, 3.12, and 3.13.
 - Final Step 11 validation contains 141 passing tests, green Ruff, successful real Step 9 → Step 10 CLI comparison, and durable `docs/validation/step11_compare_step9_step10.json` evidence.
 - Step 11 is complete. Step 12 is the regression decision engine: baseline/candidate paired experiments, accuracy/correctness gates, thresholds/uncertainty, and PASS/FAIL/INCONCLUSIVE decisions built on the Step 11 comparator rather than duplicated comparability rules.
+
+---
+
+## README validation visual — 15 September 2026
+
+A documentation mini-step after Step 11 added a README-facing visual summary of the durable Step 9–11 evidence.
+
+- PR #13 (`docs: add README validation snapshot`) was squash-merged as `aa6236bb8662ecd4e1d653a0da3c3b4933021d0f`.
+- Added `docs/validation/lidarperf_validation_snapshot.svg` and embedded it in the main README.
+- The visual reports the real committed KISS-ICP/Hilti evidence: Step 9/10 APE translation RMSE ≈ 0.3375 m, rotation RMSE ≈ 47.90° (known short-prefix caveat), Step 10 5/5 measured trials successful, zero pairwise translation repeatability RMSE, and 3.5747 s median hosted wall time.
+- The presentation explicitly preserves Step 11 semantics: accuracy comparable = yes; strict performance comparable = no; performance authoritative = no; regression comparable = no.
+- Hosted timing remains labeled descriptive-only; the visual does not promote GitHub-hosted measurements into authoritative performance claims.
+- PR #13 CI and post-merge `main` CI both passed Python 3.11/3.12/3.13.
+- The first history-closure workflow attempt used an unsafe heredoc/YAML layout: its workspace append step ran, but the intended commit step was not parsed/executed. No project file was changed by that failed closure attempt; this replacement workflow fixes the tooling mistake and removes itself.
+
+This visual is presentation derived from existing durable evidence, not a new benchmark result.
