@@ -215,7 +215,9 @@ def main() -> None:
 
     payload = {
         "schema_version": "lidarperf.step12-validation.v1",
-        "evidence_kind": "decision-engine validation; synthetic controlled scenarios are not benchmark claims",
+        "evidence_kind": (
+            "decision-engine validation; synthetic controlled scenarios are not benchmark claims"
+        ),
         "source_evidence": {
             "real_hosted_baseline": "docs/validation/step9_kiss_hilti.lperf",
             "real_hosted_candidate": "docs/validation/step10_kiss_hilti_repeated.lperf",
