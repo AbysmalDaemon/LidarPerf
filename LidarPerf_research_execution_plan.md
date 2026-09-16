@@ -3582,3 +3582,23 @@ One-shot workflow **35138572844** then wired the CLI, ran Ruff successfully, and
 `docs/validation/step14_kiss_hilti_bencher.json` is generated from the committed Step 10 KISS-ICP/Hilti repeated bundle using the actual CLI. The export preserves the Step 10 result as descriptive hosted evidence: the benchmark identity ends in `-bencher-ignore`, wall time is the Step 10 median (~3.574710196 s), trial success ratio is 1.0, and no result UUID / host fingerprint / local trial path is emitted. This is an interoperability artifact, not an additional KISS-ICP benchmark execution or an authoritative performance claim.
 
 Step 14 is complete only after the exact final PR head passes the normal Python 3.11/3.12/3.13 matrix, PR #16 is squash-merged, post-merge `main` CI is green, and the final merge/CI state is appended to this living record.
+
+
+---
+
+### Step 14 post-merge closure — 16 September 2026
+
+Step 14 is complete.
+
+- PR #16, `feat: add Step 14 Bencher export`, was squash-merged.
+- Exact final PR head: `8f55ac8cc0203c48b4a2ef4470cbec9655f57f62`.
+- Final-head CI run **35139137519** passed Ruff and the **167-test** suite on Python 3.11, 3.12, and 3.13.
+- Implementation squash-merge SHA: `e5a32ccaff57078e06c09b00040d1e8d196ee274`.
+- Post-merge `main` CI run **35139463791** passed Python 3.11, 3.12, and 3.13.
+- Durable real export: `docs/validation/step14_kiss_hilti_bencher.json`.
+- The durable hosted export remains descriptive and carries Bencher's `-bencher-ignore` authority guardrail; Step 14 made no new estimator run and no authoritative performance claim.
+- The intermediate workflow-ordering failure in run **35138577074** remains recorded above, together with the successful CLI-wiring and closure workflows.
+- The first post-merge logger run **35139576773** was itself a tooling failure: a malformed shell here-document caused the append/remove step to become a no-op even though GitHub marked the job successful. A repaired one-shot workflow used an encoded Python append and removed the temporary workflow correctly. This failure is preserved rather than hidden.
+- Temporary Step 14 workflows are removed; the permanent repository workflow set returns to the normal CI workflow only.
+
+The next planned engineering phase is **Phase 15 — Docker backend**, for external estimator execution where direct Python integration is unsuitable.
