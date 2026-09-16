@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from lidarperf.report import BundleReport, ReportError, build_report
 
@@ -23,7 +23,7 @@ class BencherMetric(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
-    value: float = Field()
+    value: float
 
 
 @dataclass(frozen=True)
@@ -155,6 +155,25 @@ def _collect_metrics(report: BundleReport) -> dict[str, BencherMetric]:
     return metrics
 
 
+def export_report_to_bencher(report: BundleReport) -> BencherExport:
+    """Convert an already verified report summary to conservative Bencher BMF data."""
+
+    metrics = _collect_metrics(report)
+    if not metrics:
+        raise BencherExportError("verified bundle contains no exportable numeric metrics")
+
+    suppressed = _alerts_suppressed(report)
+    name = _semantic_benchmark_name(report)
+    if suppressed:
+        name = _bounded_name(name, reserve=len(_IGNORE_SUFFIX)) + _IGNORE_SUFFIX
+
+    return BencherExport(
+        benchmark_name=name,
+        alerts_suppressed=suppressed,
+        metrics=metrics,
+    )
+
+
 def build_bencher_export(bundle: str | Path) -> BencherExport:
     """Convert a verified result bundle into conservative Bencher Metric Format data.
 
@@ -172,17 +191,4 @@ def build_bencher_export(bundle: str | Path) -> BencherExport:
     except (ReportError, OSError, ValueError) as exc:
         raise BencherExportError(str(exc)) from exc
 
-    metrics = _collect_metrics(report)
-    if not metrics:
-        raise BencherExportError("verified bundle contains no exportable numeric metrics")
-
-    suppressed = _alerts_suppressed(report)
-    name = _semantic_benchmark_name(report)
-    if suppressed:
-        name = _bounded_name(name, reserve=len(_IGNORE_SUFFIX)) + _IGNORE_SUFFIX
-
-    return BencherExport(
-        benchmark_name=name,
-        alerts_suppressed=suppressed,
-        metrics=metrics,
-    )
+    return export_report_to_bencher(report)
