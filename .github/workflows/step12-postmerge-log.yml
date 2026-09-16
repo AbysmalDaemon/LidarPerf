@@ -1,0 +1,57 @@
+name: Step 12 post-merge history closure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/step12-postmerge-log.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  close-log:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append Step 12 post-merge closure
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('LidarPerf_research_execution_plan.md')
+          text = path.read_text(encoding='utf-8')
+          entry = '''
+
+### Step 12 post-merge closure — 16 September 2026
+
+Step 12 is closed.
+
+- PR #14 (`feat: add Step 12 regression decision engine`) was squash-merged as `c40e351637ac99ac2c25d7a58f4fbce683e6f87f`.
+- Exact final PR head: `0fc6b6f391b120cc47e667523ea67e7bc25361fd`.
+- Final PR-head CI run `35132557662` passed Python 3.11, 3.12, and 3.13.
+- Post-merge `main` CI run `35132752510` passed Python 3.11, 3.12, and 3.13.
+- Final permanent test suite: 151 passed; Ruff green.
+- Durable validation remains `docs/validation/step12_regression_engine.json`.
+
+Additional closure-tooling history that occurred after the main Step 12 log entry:
+
+- The first closure retry was blocked because `ruff check .` inspected temporary helper `scripts/_step12_finalize.py` and found only an import-formatting I001. Product code and generated evidence were not implicated.
+- After auto-fixing that disposable helper, the next retry reached the real closure gates: 151 tests passed, real hosted Step 9→Step 10 returned `NOT_COMPARABLE`, all durable synthetic decision scenarios asserted correctly, and documentation generation succeeded. Cleanup alone failed because Ruff had modified the temporary helper and plain `git rm` refused to remove its dirty working copy.
+- The final retry changed cleanup to `git rm -f`; validation, documentation, scaffolding removal, permanent-tree revalidation, evidence generation, and closure commit all succeeded.
+- Before merge, an automated README insertion was found to have placed the policy-form `lidarperf regress` command in the planned-CLI block while leaving it out of `Available now`. This documentation bug was corrected in owner-authored commit `0fc6b6f391b120cc47e667523ea67e7bc25361fd`, which also supplied the exact final-head CI trigger.
+
+No failed tooling attempt was promoted into benchmark evidence. The real GitHub-hosted evidence remains non-authoritative and `NOT_COMPARABLE` for strict regression; synthetic controlled scenarios remain explicitly decision-engine fixtures rather than benchmark claims.
+'''
+          if '### Step 12 post-merge closure — 16 September 2026' not in text:
+              path.write_text(text + entry, encoding='utf-8')
+          PY
+      - name: Commit closure and remove one-shot workflow
+        run: |
+          git rm .github/workflows/step12-postmerge-log.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close Step 12 execution history'
+          git push
