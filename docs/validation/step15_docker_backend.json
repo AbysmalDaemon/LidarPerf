@@ -1,0 +1,102 @@
+{
+  "authoritative_performance": false,
+  "authority_reason": "ordinary GitHub-hosted runner and Docker v0.1 does not claim process-tree CPU/memory accounting across the daemon boundary",
+  "capability": {
+    "authoritative_process_accounting": false,
+    "backend": "docker-cli",
+    "client_version": "28.0.4",
+    "daemon_reachable": true,
+    "default_timing_scope": "end_to_end",
+    "installed": true,
+    "internal_phase_timing": false,
+    "peak_memory": false,
+    "per_frame_latency": false,
+    "process_cpu_time": false,
+    "process_wall_time": true,
+    "reason": null,
+    "schema_version": "lidarperf.docker-capability.v1",
+    "server_version": "28.0.4"
+  },
+  "execution_metadata": {
+    "backend": "docker-cli",
+    "backend_version": {
+      "client": "28.0.4",
+      "server": "28.0.4"
+    },
+    "capabilities": {
+      "authoritative_process_accounting": false,
+      "backend": "docker-cli",
+      "client_version": "28.0.4",
+      "daemon_reachable": true,
+      "default_timing_scope": "end_to_end",
+      "installed": true,
+      "internal_phase_timing": false,
+      "peak_memory": false,
+      "per_frame_latency": false,
+      "process_cpu_time": false,
+      "process_wall_time": true,
+      "reason": null,
+      "schema_version": "lidarperf.docker-capability.v1",
+      "server_version": "28.0.4"
+    },
+    "container": {
+      "command": [
+        "sh",
+        "-c",
+        "printf \"%s\\n\" \"$LIDARPERF_VALIDATION\" > /out/result.txt; echo docker-backend-ok"
+      ],
+      "cpu_allocation": [
+        0
+      ],
+      "digest_kind": "repo_digest",
+      "entrypoint": null,
+      "environment": {
+        "LIDARPERF_VALIDATION": "step15"
+      },
+      "gpu_access": {
+        "device_ids": [],
+        "mode": "none"
+      },
+      "image": "alpine:3.20",
+      "image_id": "sha256:bf8527eb54c3680e728d5b4b383a8ba730d72dae7236fbc8dff97ed6b224a731",
+      "immutable_image_digest": "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+      "memory_limit_bytes": 67108864,
+      "mounts": [
+        {
+          "read_only": false,
+          "source": "/home/runner/work/LidarPerf/LidarPerf/.step15-docker-validation/output",
+          "target": "/out"
+        }
+      ],
+      "network": "none",
+      "pull_policy": "never",
+      "repo_digest": "alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+      "working_directory": null
+    },
+    "timing_scope": "end_to_end"
+  },
+  "execution_result": {
+    "cleanup_error": null,
+    "return_code": 0,
+    "timed_out": false,
+    "timing_scope": "end_to_end",
+    "wall_time_s": 1.068245745
+  },
+  "image": {
+    "digest_kind": "repo_digest",
+    "image_id": "sha256:bf8527eb54c3680e728d5b4b383a8ba730d72dae7236fbc8dff97ed6b224a731",
+    "immutable_digest": "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+    "repo_digest": "alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+    "requested_image": "alpine:3.20",
+    "schema_version": "lidarperf.docker-image.v1"
+  },
+  "purpose": "functional Docker backend integration evidence",
+  "schema_version": "lidarperf.step15-docker-validation.v1",
+  "validation": {
+    "bind_mount_round_trip": "step15",
+    "combined_output": "docker-backend-ok",
+    "immutable_runtime_image": "alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc",
+    "memory_limit_bytes": 67108864,
+    "network_disabled": true
+  }
+}

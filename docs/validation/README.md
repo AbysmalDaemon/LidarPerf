@@ -10,6 +10,7 @@ This directory contains durable integration evidence produced while building Lid
 - `lidarperf_validation_snapshot.svg` is the README-facing visual summary of the committed Step 9–11 evidence. Its numbers are derived from the durable result bundles and Step 11 comparison report; it is presentation material, not an additional benchmark result.
 - [`step13_kiss_hilti_report.html`](step13_kiss_hilti_report.html) and [`step13_kiss_hilti_report.json`](step13_kiss_hilti_report.json) are the first durable `lidarperf report` outputs. They summarize the verified Step 10 real bundle and attach the Step 11 semantic-comparison context. The report preserves the hosted result's `exploratory` / non-authoritative status and makes no new performance claim.
 - [`step14_kiss_hilti_bencher.json`](step14_kiss_hilti_bencher.json) is the first durable Bencher Metric Format export. It is derived from the verified Step 10 bundle and intentionally ends its benchmark identity with `-bencher-ignore`, so the hosted exploratory values may be stored without producing Bencher performance alerts. It is descriptive interoperability evidence, not a new benchmark run.
+- [`step15_docker_backend.json`](step15_docker_backend.json) is the first real Docker-backend integration record. It executes `alpine:3.20` by immutable digest with network disabled, one declared CPU, a 64 MiB memory cap and a writable bind mount. The run validates immutable-image resolution, mount round-trip, output capture and cleanup semantics. Its elapsed wall time is functional hosted evidence only; Docker v0.1 explicitly does not claim authoritative process CPU/memory accounting across the daemon boundary.
 
 Use `lidarperf verify <bundle>` to validate a committed `.lperf` directory. Measurement strength is determined by both repetition requirements and environment requirements. In particular, five measured trials alone do not make a result `controlled`; the v0.1 specification also requires a stable self-hosted or otherwise controlled Linux benchmark environment with the declared controls.
 
@@ -45,3 +46,12 @@ The warning about suppressed Bencher alerts is written to stderr and therefore d
 bencher run --adapter json \
   "lidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf"
 ```
+
+Reproduce the Step 15 Docker integration on a Linux host with a reachable Docker daemon:
+
+```bash
+docker pull alpine:3.20
+python scripts/run_step15_docker_validation.py
+```
+
+The committed validation uses `--network none`, an explicit CPU allocation and a 64 MiB memory limit. The image is executed by immutable repository digest with `--pull never`; the JSON records both requested and immutable image identities plus Docker client/server versions. The 64 MiB cap is a fixture constraint chosen to prove memory-limit declaration and provenance, not a recommended estimator memory budget.
