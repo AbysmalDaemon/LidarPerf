@@ -3664,3 +3664,15 @@ Container commands and explicitly declared environment values are benchmark sema
 ### Next
 
 After final PR-head and post-merge matrices, Step 16 moves to broader real-dataset / estimator validation before the GitHub Action layer, so the Docker abstraction is exercised by a real LO/LIO estimator rather than only the minimal Alpine integration fixture.
+
+
+### Step 15 post-merge closure — 16 September 2026
+
+- PR #17 (`feat: add Step 15 Docker backend`) was marked ready and squash-merged from exact final head `37141c1e068a04c37d67fec3cefc383840134c13`.
+- Step 15 implementation merge SHA: `66623f437c85afe33983b0bbb20981cd6c6ad97a`.
+- Exact final-head CI run `35143887607` passed Python 3.11, 3.12 and 3.13 with Ruff green and the full **176-test** suite.
+- Post-merge `main` CI run `35144130872` passed Python 3.11, 3.12 and 3.13.
+- Durable real Docker validation remains `docs/validation/step15_docker_backend.json`; it proves immutable image resolution, explicit CPU/network/memory semantics, writable bind-mount round-trip, combined output capture and successful cleanup, while remaining explicitly non-authoritative for process CPU/RAM performance claims.
+- The normative memory-limit omission found during the pre-merge SPEC audit was fixed before merge and exercised in the real validation with a 64 MiB fixture cap.
+- Temporary Step 15 patch/closure workflows and helper scripts were removed before merge; only the normal `.github/workflows/ci.yml` remains in the product tree.
+- Step 15 is complete. Step 16 should broaden real estimator/dataset coverage and exercise the Docker abstraction with an actual LO/LIO estimator before the GitHub Action layer.
