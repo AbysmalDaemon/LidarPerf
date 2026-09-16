@@ -3515,3 +3515,18 @@ scientific strength of that evidence.
 Step 13 exit condition: durable real HTML/JSON report evidence, documentation, living history,
 159-test full-suite validation, exact final-head Python 3.11/3.12/3.13 CI, merge, and post-merge
 `main` CI must all be green before the step is closed.
+
+
+### Step 13 post-merge closure — 16 September 2026
+
+Step 13 is closed.
+
+- PR #15 (`feat: add Step 13 self-contained reports`) was squash-merged as `0ed1724b9af07bf2628301d6e5adea918b5025e7`.
+- Exact final PR head: `d2762331c00f93569fc3e07aa7aea4323cb0d62c`.
+- Final PR-head CI run `35135732658` passed Python 3.11, 3.12, and 3.13.
+- Post-merge `main` CI run `35135874636` passed Python 3.11, 3.12, and 3.13.
+- Final permanent test suite: 159 passed; Ruff green.
+- Durable report evidence is `docs/validation/step13_kiss_hilti_report.html` and `docs/validation/step13_kiss_hilti_report.json`.
+- The durable report is derived from the verified Step 10 KISS-ICP/Hilti bundle plus Step 11 comparison evidence. It does not create a new benchmark result and preserves the underlying `exploratory` / non-authoritative hosted-performance status.
+- Temporary Step 13 repair, closure, and history workflows were removed; the permanent workflow set returns to normal `ci.yml` only.
+- Step 13 is complete. Step 14 is Bencher export: map verified LidarPerf result/comparison/regression semantics into a stable Bencher-compatible machine-readable output without weakening LidarPerf's own evidence model.
