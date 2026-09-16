@@ -54,7 +54,7 @@ jobs:
         run: python scripts/_step12_finalize.py
       - name: Remove scaffolding and revalidate permanent tree
         run: |
-          git rm \
+          git rm -f \
             .github/workflows/step12-finalize.yml \
             .github/workflows/step12-finalize-retry.yml \
             scripts/_step12_finalize.py
