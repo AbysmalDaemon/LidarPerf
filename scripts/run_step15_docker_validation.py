@@ -34,11 +34,11 @@ def main() -> None:
         command=(
             "sh",
             "-c",
-            'printf "%s\\n" "$LIDARPERF_VALIDATION" > /out/result.txt; '
-            "echo docker-backend-ok",
+            'printf "%s\\n" "$LIDARPERF_VALIDATION" > /out/result.txt; echo docker-backend-ok',
         ),
         mounts=(DockerMount(source=output_dir, target="/out", read_only=False),),
         cpu_cores=cpu_cores,
+        memory_limit_bytes=64 * 1024 * 1024,
         network="none",
         environment={"LIDARPERF_VALIDATION": "step15"},
         timeout_s=30.0,
@@ -76,6 +76,7 @@ def main() -> None:
         },
         "validation": {
             "network_disabled": spec.network == "none",
+            "memory_limit_bytes": spec.memory_limit_bytes,
             "immutable_runtime_image": result.image.repo_digest or result.image.image_id,
             "bind_mount_round_trip": produced,
             "combined_output": log_text,

@@ -96,6 +96,7 @@ class DockerRunSpec(_FrozenModel):
     network: str = "none"
     environment: dict[str, str] = Field(default_factory=dict)
     working_directory: str | None = None
+    memory_limit_bytes: int | None = Field(default=None, gt=0)
     timeout_s: float | None = Field(default=None, gt=0)
 
     @field_validator("image", "entrypoint")
@@ -264,6 +265,7 @@ class DockerExecutionResult(_FrozenModel):
                 "network": self.spec.network,
                 "environment": self.spec.environment,
                 "working_directory": self.spec.working_directory,
+                "memory_limit_bytes": self.spec.memory_limit_bytes,
                 "pull_policy": "never",
             },
         }
@@ -462,6 +464,8 @@ class DockerBackend:
         ]
         if spec.cpu_cores:
             args.extend(("--cpuset-cpus", ",".join(str(core) for core in spec.cpu_cores)))
+        if spec.memory_limit_bytes is not None:
+            args.extend(("--memory", str(spec.memory_limit_bytes)))
         if spec.gpu_access.mode == "all":
             args.extend(("--gpus", "all"))
         elif spec.gpu_access.mode == "devices":

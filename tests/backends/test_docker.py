@@ -111,6 +111,7 @@ def test_build_command_uses_immutable_reference_and_declared_semantics(tmp_path:
         entrypoint="/usr/local/bin/runner",
         mounts=(DockerMount(source=source, target="/data"),),
         cpu_cores=(3, 1, 3),
+        memory_limit_bytes=536870912,
         gpu_access=DockerGpuAccess(mode="devices", device_ids=("0", "2")),
         network="none",
         environment={"OMP_NUM_THREADS": "2", "MODE": "benchmark"},
@@ -141,6 +142,7 @@ def test_build_command_uses_immutable_reference_and_declared_semantics(tmp_path:
     assert command[7:9] == ("--network", "none")
     assert "--cpuset-cpus" in command
     assert command[command.index("--cpuset-cpus") + 1] == "1,3"
+    assert command[command.index("--memory") + 1] == "536870912"
     assert command[command.index("--gpus") + 1] == "device=0,2"
     assert REPO_DIGEST in command
     assert "example/estimator:1" not in command
@@ -155,6 +157,7 @@ def test_execute_captures_wall_time_log_and_spec66_metadata(tmp_path: Path) -> N
         command=("estimate",),
         mounts=(DockerMount(source=source, target="/dataset"),),
         cpu_cores=(0, 1),
+        memory_limit_bytes=268435456,
         network="none",
         environment={"OMP_NUM_THREADS": "2"},
     )
@@ -175,6 +178,7 @@ def test_execute_captures_wall_time_log_and_spec66_metadata(tmp_path: Path) -> N
     assert metadata["container"]["immutable_image_digest"] == "sha256:" + "2" * 64
     assert metadata["container"]["mounts"][0]["source"] == str(source)
     assert metadata["container"]["cpu_allocation"] == [0, 1]
+    assert metadata["container"]["memory_limit_bytes"] == 268435456
     assert metadata["container"]["gpu_access"] == {"mode": "none", "device_ids": []}
     assert metadata["container"]["network"] == "none"
     assert metadata["container"]["environment"] == {"OMP_NUM_THREADS": "2"}
@@ -208,6 +212,8 @@ def test_run_spec_rejects_ambiguous_or_unsafe_semantics(tmp_path: Path) -> None:
                 DockerMount(source=tmp_path.resolve(), target="/data"),
             ),
         )
+    with pytest.raises(ValidationError):
+        DockerRunSpec(image="x", memory_limit_bytes=0)
     with pytest.raises(ValidationError, match="environment variable name"):
         DockerRunSpec(image="x", environment={"BAD-NAME": "1"})
     with pytest.raises(ValidationError, match="devices GPU mode"):
