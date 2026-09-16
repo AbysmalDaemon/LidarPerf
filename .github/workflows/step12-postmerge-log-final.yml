@@ -1,0 +1,38 @@
+name: Step 12 final living-record closure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/step12-postmerge-log-final.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  close:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append living record and remove one-shot logging workflows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from base64 import b64decode
+          from pathlib import Path
+
+          payload = "CgojIyMgU3RlcCAxMiBwb3N0LW1lcmdlIGNsb3N1cmUg4oCUIDE2IFNlcHRlbWJlciAyMDI2CgpTdGVwIDEyIGlzIGNsb3NlZC4KCi0gUFIgIzE0IChgZmVhdDogYWRkIFN0ZXAgMTIgcmVncmVzc2lvbiBkZWNpc2lvbiBlbmdpbmVgKSB3YXMgc3F1YXNoLW1lcmdlZCBhcyBgYzQwZTM1MTYzN2FjOTlhYzJjMjVkN2E1OGY0ZmJjZTY4M2U2Zjg3ZmAuCi0gRXhhY3QgZmluYWwgUFIgaGVhZDogYDBmYzZiNmYzOTFiMTIwY2M0N2U2Njc1MjNlYTY3ZTdiYzI1MzYxZmRgLgotIEZpbmFsIFBSLWhlYWQgQ0kgcnVuIGAzNTEzMjU1NzY2MmAgcGFzc2VkIFB5dGhvbiAzLjExLCAzLjEyLCBhbmQgMy4xMy4KLSBQb3N0LW1lcmdlIGBtYWluYCBDSSBydW4gYDM1MTMyNzUyNTEwYCBwYXNzZWQgUHl0aG9uIDMuMTEsIDMuMTIsIGFuZCAzLjEzLgotIEZpbmFsIHBlcm1hbmVudCB0ZXN0IHN1aXRlOiAxNTEgcGFzc2VkOyBSdWZmIGdyZWVuLgotIER1cmFibGUgdmFsaWRhdGlvbiByZW1haW5zIGBkb2NzL3ZhbGlkYXRpb24vc3RlcDEyX3JlZ3Jlc3Npb25fZW5naW5lLmpzb25gLgoKQWRkaXRpb25hbCBjbG9zdXJlLXRvb2xpbmcgaGlzdG9yeSB0aGF0IG9jY3VycmVkIGFmdGVyIHRoZSBtYWluIFN0ZXAgMTIgbG9nIGVudHJ5OgoKLSBUaGUgZmlyc3QgY2xvc3VyZSByZXRyeSB3YXMgYmxvY2tlZCBiZWNhdXNlIGBydWZmIGNoZWNrIC5gIGluc3BlY3RlZCB0ZW1wb3JhcnkgaGVscGVyIGBzY3JpcHRzL19zdGVwMTJfZmluYWxpemUucHlgIGFuZCBmb3VuZCBvbmx5IGFuIGltcG9ydC1mb3JtYXR0aW5nIEkwMDEuIFByb2R1Y3QgY29kZSBhbmQgZ2VuZXJhdGVkIGV2aWRlbmNlIHdlcmUgbm90IGltcGxpY2F0ZWQuCi0gQWZ0ZXIgYXV0by1maXhpbmcgdGhhdCBkaXNwb3NhYmxlIGhlbHBlciwgdGhlIG5leHQgcmV0cnkgcmVhY2hlZCB0aGUgcmVhbCBjbG9zdXJlIGdhdGVzOiAxNTEgdGVzdHMgcGFzc2VkLCByZWFsIGhvc3RlZCBTdGVwIDnihoJTdGVwIDEwIHJldHVybmVkIGBOT1RfQ09NUEFSQUJMRWAsIGFsbCBkdXJhYmxlIHN5bnRoZXRpYyBkZWNpc2lvbiBzY2VuYXJpb3MgYXNzZXJ0ZWQgY29ycmVjdGx5LCBhbmQgZG9jdW1lbnRhdGlvbiBnZW5lcmF0aW9uIHN1Y2NlZWRlZC4gQ2xlYW51cCBhbG9uZSBmYWlsZWQgYmVjYXVzZSBSdWZmIGhhZCBtb2RpZmllZCB0aGUgdGVtcG9yYXJ5IGhlbHBlciBhbmQgcGxhaW4gYGdpdCBybWAgcmVmdXNlZCB0byByZW1vdmUgaXRzIGRpcnR5IHdvcmtpbmcgY29weS4KLSBUaGUgZmluYWwgcmV0cnkgY2hhbmdlZCBjbGVhbnVwIHRvIGBnaXQgcm0gLWZgOyB2YWxpZGF0aW9uLCBkb2N1bWVudGF0aW9uLCBzY2FmZm9sZGluZyByZW1vdmFsLCBwZXJtYW5lbnQtdHJlZSByZXZhbGlkYXRpb24sIGV2aWRlbmNlIGdlbmVyYXRpb24sIGFuZCBjbG9zdXJlIGNvbW1pdCBhbGwgc3VjY2VlZGVkLgotIEJlZm9yZSBtZXJnZSwgYW4gYXV0b21hdGVkIFJFQURNRSBpbnNlcnRpb24gd2FzIGZvdW5kIHRvIGhhdmUgcGxhY2VkIHRoZSBwb2xpY3ktZm9ybSBgbGlkYXJwZXJmIHJlZ3Jlc3NgIGNvbW1hbmQgaW4gdGhlIHBsYW5uZWQtQ0xJIGJsb2NrIHdoaWxlIGxlYXZpbmcgaXQgb3V0IG9mIGBBdmFpbGFibGUgbm93YC4gVGhpcyBkb2N1bWVudGF0aW9uIGJ1ZyB3YXMgY29ycmVjdGVkIGluIG93bmVyLWF1dGhvcmVkIGNvbW1pdCBgMGZjNmI2ZjM5MWIxMjBjYzQ3ZTY2NzUyM2VhNjdlN2JjMjUzNjFmZGAsIHdoaWNoIGFsc28gc3VwcGxpZWQgdGhlIGV4YWN0IGZpbmFsLWhlYWQgQ0kgdHJpZ2dlci4KLSBUaGUgZmlyc3QgcG9zdC1tZXJnZSBoaXN0b3J5IHdvcmtmbG93IGl0c2VsZiB3YXMgcmVqZWN0ZWQgYnkgR2l0SHViIGJlZm9yZSBhbnkgam9iIHdhcyBjcmVhdGVkIGJlY2F1c2UgaXRzIFlBTUw gY291bGQgbm90IGJlIHBhcnNlZC4gSXQgbWFkZSBubyBsaXZpbmctcmVjb3JkIGNoYW5nZTsgdGhlIHdvcmtmbG93IHdhcyByZXBsYWNlZCB3aXRoIGEgc2ltcGxlciBiYXNlNjQgYXBwZW5kIHN0ZXAuCi0gVGhlIHNpbXBsaWZpZWQgcmVwbGFjZW1lbnQgd29ya2Zsb3cgZGlkIHN0YXJ0LCBidXQgaXRzIGVtYmVkZGVkIGJhc2U2NCBwYXlsb2FkIHdhcyBtYWxmb3JtZWQgYW5kIGBiYXNlNjQgLWRgIGV4aXRlZCBiZWZvcmUgbW9kaWZ5aW5nIG9yIGNvbW1pdHRpbmcgdGhlIGxpdmluZyByZWNvcmQuCgpObyBmYWlsZWQgdG9vbGluZyBhdHRlbXB0IHdhcyBwcm9tb3RlZCBpbnRvIGJlbmNobWFyayBldmlkZW5jZS4gVGhlIHJlYWwgR2l0SHViLWhvc3RlZCBldmlkZW5jZSByZW1haW5zIG5vbi1hdXRob3JpdGF0aXZlIGFuZCBgTk9UX0NPTVBBUkFCTEVgIGZvciBzdHJpY3QgcmVncmVzc2lvbjsgc3ludGhldGljIGNvbnRyb2xsZWQgc2NlbmFyaW9zIHJlbWFpbiBleHBsaWNpdGx5IGRlY2lzaW9uLWVuZ2luZSBmaXh0dXJlcyByYXRoZXIgdGhhbiBiZW5jaG1hcmsgY2xhaW1zLgo="
+          path = Path("LidarPerf_research_execution_plan.md")
+          text = path.read_text(encoding="utf-8")
+          marker = "### Step 12 post-merge closure — 16 September 2026"
+          if marker not in text:
+              path.write_text(text + b64decode(payload).decode("utf-8"), encoding="utf-8")
+          PY
+          git rm -f .github/workflows/step12-postmerge-log.yml
+          git rm -f .github/workflows/step12-postmerge-log-final.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close Step 12 execution history'
+          git push
