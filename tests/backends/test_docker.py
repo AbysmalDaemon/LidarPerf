@@ -70,7 +70,9 @@ def test_probe_reports_unreachable_daemon() -> None:
 
 def test_image_inspection_prefers_registry_digest() -> None:
     runner = FakeDockerRunner()
-    provenance = DockerBackend("/usr/bin/docker", runner=runner).inspect_image("example/estimator:1")
+    provenance = DockerBackend("/usr/bin/docker", runner=runner).inspect_image(
+        "example/estimator:1"
+    )
 
     assert provenance.image_id == IMAGE_ID
     assert provenance.repo_digest == REPO_DIGEST
@@ -136,7 +138,7 @@ def test_build_command_uses_immutable_reference_and_declared_semantics(tmp_path:
         "--name",
         "lidarperf-test",
     )
-    assert ("--network", "none") == command[7:9]
+    assert command[7:9] == ("--network", "none")
     assert "--cpuset-cpus" in command
     assert command[command.index("--cpuset-cpus") + 1] == "1,3"
     assert command[command.index("--gpus") + 1] == "device=0,2"

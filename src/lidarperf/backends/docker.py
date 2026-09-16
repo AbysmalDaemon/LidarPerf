@@ -8,8 +8,9 @@ import re
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Literal, Self
+from typing import Any, Literal, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -290,7 +291,9 @@ def _select_repo_digest(image: str, repo_digests: list[str]) -> str | None:
     if requested is not None:
         return requested
     valid = sorted(
-        item for item in repo_digests if "@" in item and _SHA256_RE.fullmatch(item.rsplit("@", 1)[1])
+        item
+        for item in repo_digests
+        if "@" in item and _SHA256_RE.fullmatch(item.rsplit("@", 1)[1])
     )
     return valid[0] if valid else None
 
@@ -416,7 +419,9 @@ class DockerBackend:
         repo_digests = record.get("RepoDigests") or []
         if not isinstance(image_id, str) or not _SHA256_RE.fullmatch(image_id):
             raise DockerImageError("Docker image does not expose a valid sha256 image ID")
-        if not isinstance(repo_digests, list) or not all(isinstance(item, str) for item in repo_digests):
+        if not isinstance(repo_digests, list) or not all(
+            isinstance(item, str) for item in repo_digests
+        ):
             raise DockerImageError("Docker image RepoDigests field is malformed")
 
         repo_digest = _select_repo_digest(image, repo_digests)
