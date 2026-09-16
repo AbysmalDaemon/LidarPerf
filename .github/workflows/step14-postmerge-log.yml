@@ -1,0 +1,45 @@
+name: Step 14 post-merge closure
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/step14-postmerge-log.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  close:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Append closure and remove one-shot workflow
+        run: |
+          cat >> LidarPerf_research_execution_plan.md <<'EOF'
+
+---
+
+### Step 14 post-merge closure — 16 September 2026
+
+Step 14 is complete.
+
+- PR #16, `feat: add Step 14 Bencher export`, was squash-merged.
+- Exact final PR head: `8f55ac8cc0203c48b4a2ef4470cbec9655f57f62`.
+- Final-head CI run **35139137519** passed Ruff and the **167-test** suite on Python 3.11, 3.12, and 3.13.
+- Implementation squash-merge SHA: `e5a32ccaff57078e06c09b00040d1e8d196ee274`.
+- Post-merge `main` CI run **35139463791** passed Python 3.11, 3.12, and 3.13.
+- Durable real export: `docs/validation/step14_kiss_hilti_bencher.json`.
+- The durable hosted export remains descriptive and carries Bencher's `-bencher-ignore` authority guardrail; Step 14 made no new estimator run and no authoritative performance claim.
+- The intermediate workflow-ordering failure in run **35138577074** remains recorded above, together with the successful CLI-wiring and closure workflows.
+- Temporary Step 14 workflows self-deleted; the permanent repository workflow set returns to the normal CI workflow only.
+
+The next planned engineering phase is **Phase 15 — Docker backend**, for external estimator execution where direct Python integration is unsuitable.
+EOF
+          git rm .github/workflows/step14-postmerge-log.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close Step 14 execution history'
+          git push origin HEAD:main
