@@ -16,6 +16,31 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -e '.[dev]'
+      - name: Wrap lines Ruff cannot auto-fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lidarperf/backends/docker.py')
+          text = path.read_text()
+          text = text.replace(
+              '        item for item in repo_digests if "@" in item and _SHA256_RE.fullmatch(item.rsplit("@", 1)[1])\n',
+              '        item\n        for item in repo_digests\n        if "@" in item and _SHA256_RE.fullmatch(item.rsplit("@", 1)[1])\n',
+          )
+          text = text.replace(
+              '        if not isinstance(repo_digests, list) or not all(isinstance(item, str) for item in repo_digests):\n',
+              '        if not isinstance(repo_digests, list) or not all(\n            isinstance(item, str) for item in repo_digests\n        ):\n',
+          )
+          path.write_text(text)
+
+          path = Path('tests/backends/test_docker.py')
+          text = path.read_text()
+          text = text.replace(
+              '    provenance = DockerBackend("/usr/bin/docker", runner=runner).inspect_image("example/estimator:1")\n',
+              '    provenance = DockerBackend("/usr/bin/docker", runner=runner).inspect_image(\n        "example/estimator:1"\n    )\n',
+          )
+          path.write_text(text)
+          PY
       - run: ruff check --fix src/lidarperf/backends/docker.py tests/backends/test_docker.py
       - run: ruff format src/lidarperf/backends/docker.py tests/backends/test_docker.py
       - run: ruff check .
