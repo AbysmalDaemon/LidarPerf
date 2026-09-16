@@ -1,0 +1,113 @@
+name: Step 14 Bencher export closure
+
+on:
+  push:
+    branches: [step14-bencher-export]
+    paths: [.github/workflows/step14-finalize.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: step14-bencher-export
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Generate durable Bencher evidence
+        run: python scripts/run_step14_validation.py
+      - name: Update docs and living record
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          text = text.replace(
+              'the regression decision engine, and self-contained HTML/JSON reporting are implemented.',
+              'the regression decision engine, self-contained HTML/JSON reporting, and Bencher Metric Format export are implemented.',
+              1,
+          )
+          report_bullet = '- verified `lidarperf.report.v1` summaries and self-contained HTML/SVG reports covering accuracy, resources, repeatability, trajectory preview, provenance, scientific caveats, and optional comparison/regression context.\n'
+          export_bullet = '- a verified Bencher Metric Format exporter with stable semantic benchmark identities and automatic alert suppression for evidence that is not authoritative enough for performance-regression claims.\n'
+          if export_bullet not in text:
+              if report_bullet not in text:
+                  raise SystemExit('README report bullet anchor missing')
+              text = text.replace(report_bullet, report_bullet + export_bullet, 1)
+
+          step13 = 'Step 13 implements `lidarperf report`. Reports verify the source `.lperf` bundle before rendering, emit a versioned `lidarperf.report.v1` JSON summary, and can produce a single self-contained HTML file using inline CSS/SVG only. The report preserves measurement class and performance-authority semantics instead of upgrading evidence through presentation. Optional Step 11 comparison and Step 12 regression JSON can be attached when they reference the reported result. The durable real report is `docs/validation/step13_kiss_hilti_report.html` with its machine-readable companion `step13_kiss_hilti_report.json`.\n'
+          step14 = '\nStep 14 implements `lidarperf export bencher`. The command verifies the source bundle through the reporting path and emits pure Bencher Metric Format JSON so the result can be consumed by Bencher without a LidarPerf-specific wrapper. Exported values are conservative medians from an explicit allowlist; LidarPerf does not fabricate Bencher lower/upper bounds from run-set spread. Dataset/protocol fingerprints and measurement class are part of the stable benchmark identity. Exploratory, non-conformant, partially failed, or otherwise non-authoritative evidence receives Bencher\'s `-bencher-ignore` suffix automatically, so it may be stored for history without creating performance alerts. The durable hosted example is `docs/validation/step14_kiss_hilti_bencher.json`.\n'
+          if 'Step 14 implements `lidarperf export bencher`.' not in text:
+              if step13 not in text:
+                  raise SystemExit('README Step 13 anchor missing')
+              text = text.replace(step13, step13 + step14, 1)
+
+          planned = 'lidarperf report result.lperf --html report.html --json report.json\n'
+          if 'lidarperf export bencher result.lperf\n' not in text:
+              text = text.replace(planned, planned + 'lidarperf export bencher result.lperf\n', 1)
+          available = 'lidarperf report result.lperf --html report.html --json report.json\n```\n'
+          if text.count('lidarperf export bencher result.lperf') < 2:
+              if available not in text:
+                  raise SystemExit('README available CLI anchor missing')
+              text = text.replace(
+                  available,
+                  'lidarperf report result.lperf --html report.html --json report.json\n'
+                  'lidarperf export bencher result.lperf\n```\n',
+                  1,
+              )
+
+          report_para = '`report` first verifies the immutable source bundle, then builds a versioned `lidarperf.report.v1` summary. `--html` writes a portable, self-contained report with inline SVG trajectory/distribution graphics and no CDN, JavaScript, external fonts, or network requests; `--json` writes the same report semantics for downstream tools. The renderer surfaces verification warnings, failed trials, measurement class, host control, and `performance_authoritative` status prominently. `--comparison` and `--regression` may attach existing versioned decision reports, but presentation never changes their conclusions or the strength of the underlying evidence.\n'
+          export_para = '''\n`export bencher` emits [Bencher Metric Format](https://bencher.dev/docs/reference/bencher-metric-format/) JSON on stdout, with diagnostics kept on stderr so command capture remains machine-readable. The benchmark name includes method/track, dataset identity, exact dataset/protocol fingerprint prefixes, protocol version, and LidarPerf measurement class; result IDs, host identifiers, local paths, logs, and command lines are intentionally excluded. Repeated metrics use medians. Non-authoritative evidence is automatically named with Bencher's `-bencher-ignore` suffix, which stores the metrics while suppressing alerts. This is an interoperability export, not a replacement for LidarPerf comparability/regression decisions or a full public-bundle sanitizer.\n\nA Bencher CI job can consume it directly:\n\n```bash\nbencher run --adapter json \\\n  "lidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf"\n```\n'''
+          if '`export bencher` emits' not in text:
+              if report_para not in text:
+                  raise SystemExit('README report paragraph anchor missing')
+              text = text.replace(report_para, report_para + export_para, 1)
+          readme.write_text(text, encoding='utf-8')
+
+          validation = Path('docs/validation/README.md')
+          text = validation.read_text(encoding='utf-8')
+          step13_bullet = "- [`step13_kiss_hilti_report.html`](step13_kiss_hilti_report.html) and [`step13_kiss_hilti_report.json`](step13_kiss_hilti_report.json) are the first durable `lidarperf report` outputs. They summarize the verified Step 10 real bundle and attach the Step 11 semantic-comparison context. The report preserves the hosted result's `exploratory` / non-authoritative status and makes no new performance claim.\n"
+          step14_bullet = "- [`step14_kiss_hilti_bencher.json`](step14_kiss_hilti_bencher.json) is the first durable Bencher Metric Format export. It is derived from the verified Step 10 bundle and intentionally ends its benchmark identity with `-bencher-ignore`, so the hosted exploratory values may be stored without producing Bencher performance alerts. It is descriptive interoperability evidence, not a new benchmark run.\n"
+          if step14_bullet not in text:
+              if step13_bullet not in text:
+                  raise SystemExit('validation README Step 13 anchor missing')
+              text = text.replace(step13_bullet, step13_bullet + step14_bullet, 1)
+          if 'Reproduce the Step 14 Bencher export with:' not in text:
+              text += '''\nReproduce the Step 14 Bencher export with:\n\n```bash\nlidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf \\\n  > docs/validation/step14_kiss_hilti_bencher.json\n```\n\nThe warning about suppressed Bencher alerts is written to stderr and therefore does not contaminate the JSON stream.\n'''
+          validation.write_text(text, encoding='utf-8')
+
+          plan = Path('LidarPerf_research_execution_plan.md')
+          text = plan.read_text(encoding='utf-8')
+          marker = '## Step 14 implementation record — 16 September 2026'
+          if marker not in text:
+              text += '''\n\n---\n\n## Step 14 implementation record — 16 September 2026\n\nStep 14 implements the Phase 14 decision to export verified LidarPerf evidence to Bencher rather than building a benchmark-history service. The user-facing command is:\n\n```bash\nlidarperf export bencher result.lperf\n```\n\n### External format research\n\nThe implementation was checked against the current Bencher documentation on 16 September 2026:\n\n- `https://bencher.dev/docs/reference/bencher-metric-format/`\n- `https://bencher.dev/docs/how-to/track-custom-benchmarks/`\n- `https://bencher.dev/docs/explanation/thresholds/`\n\nCurrent Bencher Metric Format (BMF) uses a JSON object keyed by benchmark name, then measure name, with a required numeric `value` and optional `lower_value` / `upper_value`. Bencher also documents `-bencher-ignore`, `_bencher_ignore`, and `BencherIgnore` benchmark-name suffixes for storing metrics while suppressing alerts. `bencher run --adapter json` accepts BMF JSON from a custom benchmark command.\n\n### Design decisions\n\n1. The CLI emits **pure BMF JSON**, not a LidarPerf wrapper. Diagnostics go to stderr so stdout can be piped directly to `bencher run --adapter json`.\n2. The source `.lperf` bundle is independently verified by reusing the Step 13 report-building path. Invalid bundles are refused.\n3. Export is an explicit allowlist, not a dump of every numeric field. Stable measures cover APE translation/rotation RMSE, temporal/distance coverage, wall/CPU time, peak memory, CPU-core equivalents, output-repeatability RMSE, and measured-trial success ratio when available.\n4. Repeated scalar values export the **median**. BMF `lower_value` / `upper_value` are deliberately omitted because Step 10 run-set spread is not a statistical confidence interval and must not be mislabeled as one.\n5. The Bencher benchmark identity includes track, method family, dataset ID, exact dataset-content fingerprint prefix, protocol ID/version, resolved-protocol fingerprint prefix, and LidarPerf measurement class. This keeps incompatible dataset/protocol/measurement-strength histories from silently sharing one Bencher series.\n6. Result UUIDs, host fingerprints, CPU model, local paths, process logs, and command lines are excluded from the BMF payload. This makes the export a deliberately narrow public-safe metric view. It does **not** replace the broader SPEC Section 72 future sanitization requirement for publishing whole result bundles.\n7. Evidence cannot be upgraded by export. If `performance_authoritative` is false, conformance is not `conformant`, or any measured trial failed, the benchmark name automatically receives Bencher's `-bencher-ignore` suffix. There is no force-alert override. Controlled authoritative conformant evidence with no failed measured trials exports without that suffix.\n8. Bencher remains a history/visualization/threshold service. LidarPerf remains authoritative for conformance, comparability, accuracy gating, paired-regression semantics, and whether a performance claim is defensible.\n\n### Implementation\n\n- `src/lidarperf/export/bencher.py` implements BMF conversion and authority-safe benchmark naming.\n- `src/lidarperf/export_cli.py` keeps stdout machine-readable and diagnostics on stderr.\n- `src/lidarperf/cli.py` exposes `lidarperf export bencher`.\n- `scripts/run_step14_validation.py` regenerates and validates the durable real export.\n- `tests/test_bencher_export.py` covers BMF shape, semantic naming, authority suppression, public-safe field exclusion, single-trial fallback, invalid-bundle refusal, stdout purity, and file output.\n\n### Failure / tooling history\n\nThe first ordinary PR matrix on intermediate head `1f693251d16cb51bf45ee5572f4c84322c8c7f26`, run **35138577074**, failed on Python 3.11/3.12/3.13 with exactly two Step 14 CLI tests failing and 165 tests passing. Ruff was green. The failure was `No such command 'export'`: the matrix checked out the intermediate PR merge commit before the one-shot CLI-wiring workflow had committed the new Typer subcommand. This was an ordering/tooling failure, not a Bencher-conversion failure, and is retained here rather than erased.\n\nOne-shot workflow **35138572844** then wired the CLI, ran Ruff successfully, and passed the complete **167-test** suite on Python 3.11 before self-deleting. The resulting source commit was `23e8eaa0f352c96a85dcc1b7e6d116c2429de507`.\n\n### Durable real validation\n\n`docs/validation/step14_kiss_hilti_bencher.json` is generated from the committed Step 10 KISS-ICP/Hilti repeated bundle using the actual CLI. The export preserves the Step 10 result as descriptive hosted evidence: the benchmark identity ends in `-bencher-ignore`, wall time is the Step 10 median (~3.574710196 s), trial success ratio is 1.0, and no result UUID / host fingerprint / local trial path is emitted. This is an interoperability artifact, not an additional KISS-ICP benchmark execution or an authoritative performance claim.\n\nStep 14 is complete only after the exact final PR head passes the normal Python 3.11/3.12/3.13 matrix, PR #16 is squash-merged, post-merge `main` CI is green, and the final merge/CI state is appended to this living record.\n'''
+          plan.write_text(text, encoding='utf-8')
+          PY
+      - name: Remove closure scaffolding and validate permanent tree
+        run: |
+          git rm .github/workflows/step14-finalize.yml
+          ruff check .
+          pytest -q
+          python scripts/run_step14_validation.py
+      - name: Commit closure
+        run: |
+          git add \
+            README.md \
+            LidarPerf_research_execution_plan.md \
+            docs/validation/README.md \
+            docs/validation/step14_kiss_hilti_bencher.json \
+            scripts/run_step14_validation.py \
+            src/lidarperf/export \
+            src/lidarperf/export_cli.py \
+            src/lidarperf/cli.py \
+            tests/test_bencher_export.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close Step 14 Bencher export implementation'
+          git push origin HEAD:step14-bencher-export
