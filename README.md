@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, and the regression decision engine are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, the regression decision engine, and self-contained HTML/JSON reporting are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -40,6 +40,7 @@ The package currently includes:
 - a repeated-run orchestration path with explicit warmups, retained failed trials, per-metric/resource distributions, and all-pairs estimator-output repeatability recomputed by the verifier from immutable trajectory payloads.
 - a semantic comparator that independently verifies both bundles, evaluates accuracy/performance/regression comparability separately, enumerates evidence differences, and refuses strict performance ranking when required semantics are missing or incompatible.
 - an accuracy-gated regression engine with explicit policy thresholds, paired blocked-run metadata checks, deterministic bootstrap uncertainty, and `PASS` / `FAIL_ACCURACY` / `FAIL_PERFORMANCE` / `FAIL_VALIDITY` / `INCONCLUSIVE` / `NOT_COMPARABLE` verdicts.
+- verified `lidarperf.report.v1` summaries and self-contained HTML/SVG reports covering accuracy, resources, repeatability, trajectory preview, provenance, scientific caveats, and optional comparison/regression context.
 
 Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
 
@@ -57,6 +58,8 @@ change with a deterministic bootstrap confidence interval. If evidence is incomp
 gate is missing, or uncertainty crosses the threshold, LidarPerf refuses a binary performance
 claim. The example policy in `docs/examples/regression_policy.example.yaml` is illustrative
 only; its 5% performance and 2% accuracy limits are not package defaults.
+
+Step 13 implements `lidarperf report`. Reports verify the source `.lperf` bundle before rendering, emit a versioned `lidarperf.report.v1` JSON summary, and can produce a single self-contained HTML file using inline CSS/SVG only. The report preserves measurement class and performance-authority semantics instead of upgrading evidence through presentation. Optional Step 11 comparison and Step 12 regression JSON can be attached when they reference the reported result. The durable real report is `docs/validation/step13_kiss_hilti_report.html` with its machine-readable companion `step13_kiss_hilti_report.json`.
 
 ## Validation snapshot
 
@@ -76,6 +79,7 @@ lidarperf run ...
 lidarperf verify result.lperf
 lidarperf compare baseline.lperf candidate.lperf
 lidarperf regress baseline.lperf candidate.lperf --policy policy.yaml
+lidarperf report result.lperf --html report.html --json report.json
 ```
 
 Available now:
@@ -91,6 +95,7 @@ lidarperf synthetic generate ./synthetic-fixture --poses 240
 lidarperf verify ./result.lperf
 lidarperf compare baseline.lperf candidate.lperf
 lidarperf regress baseline.lperf candidate.lperf --policy docs/examples/regression_policy.example.yaml
+lidarperf report result.lperf --html report.html --json report.json
 ```
 
 `doctor` performs a read-only host probe and reports benchmark-relevant operating-system, CPU/topology, affinity, governor, memory/swap, cgroup, storage, NVIDIA/CUDA, system-load, power, and BenchExec capability metadata. It does not silently tune or modify the machine. `--json` emits the complete versioned `lidarperf.doctor.v1` report. Passing `--data-path` also classifies the dataset filesystem and warns about network storage.
@@ -113,6 +118,8 @@ median effect estimate, a bootstrap confidence interval, and an explicit practic
 from a policy file. Missing gates or a confidence interval that straddles the threshold
 produce `INCONCLUSIVE`; incompatible evidence produces `NOT_COMPARABLE`. LidarPerf does not
 silently invent a universal performance or accuracy threshold.
+
+`report` first verifies the immutable source bundle, then builds a versioned `lidarperf.report.v1` summary. `--html` writes a portable, self-contained report with inline SVG trajectory/distribution graphics and no CDN, JavaScript, external fonts, or network requests; `--json` writes the same report semantics for downstream tools. The renderer surfaces verification warnings, failed trials, measurement class, host control, and `performance_authoritative` status prominently. `--comparison` and `--regression` may attach existing versioned decision reports, but presentation never changes their conclusions or the strength of the underlying evidence.
 
 ### evalio backend
 

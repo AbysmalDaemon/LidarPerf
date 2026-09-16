@@ -20,6 +20,7 @@ from .regression import (
     load_regression_policy,
     regress_bundles,
 )
+from .report_cli import report_results
 from .spec import ProtocolLoadError, load_protocol
 from .synthetic import SyntheticFixtureConfig, write_fixture
 
@@ -33,6 +34,7 @@ protocol_app = typer.Typer(help="Validate and inspect benchmark protocol documen
 synthetic_app = typer.Typer(help="Generate deterministic synthetic conformance fixtures.")
 app.add_typer(protocol_app, name="protocol")
 app.add_typer(synthetic_app, name="synthetic")
+app.command("report")(report_results)
 
 
 def _version_callback(value: bool) -> None:

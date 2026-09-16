@@ -1,0 +1,930 @@
+{
+  "comparison": {
+    "accuracy_comparable": true,
+    "baseline_result_id": "507fe1d4-b803-4d0e-8fe6-a7ff7348b7cd",
+    "candidate_result_id": "d76a6442-cda2-4718-bf8d-9ac9bfaf10d7",
+    "checks": [
+      {
+        "baseline": "conformant",
+        "candidate": "conformant",
+        "code": "CONFORMANCE",
+        "comparable": true,
+        "reason": "both bundles must remain conformant",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": "lo",
+        "candidate": "lo",
+        "code": "TRACK",
+        "comparable": true,
+        "reason": "strict accuracy comparison requires a compatible track",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": {
+          "allowed_modes": [
+            "online_causal",
+            "online_fixed_lag"
+          ],
+          "max_fixed_lag_seconds": 1.0
+        },
+        "candidate": {
+          "allowed_modes": [
+            "online_causal",
+            "online_fixed_lag"
+          ],
+          "max_fixed_lag_seconds": 1.0
+        },
+        "code": "TEMPORAL_SEMANTICS",
+        "comparable": true,
+        "reason": "strict comparison requires compatible estimator temporal semantics",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": {
+          "forbidden": [
+            "gnss",
+            "external_localization",
+            "precomputed_motion",
+            "prebuilt_map",
+            "ground_truth",
+            "wheel_odometry",
+            "magnetometer",
+            "imu",
+            "camera"
+          ],
+          "optional": [],
+          "required": [
+            "lidar"
+          ]
+        },
+        "candidate": {
+          "forbidden": [
+            "gnss",
+            "external_localization",
+            "precomputed_motion",
+            "prebuilt_map",
+            "ground_truth",
+            "wheel_odometry",
+            "magnetometer",
+            "imu",
+            "camera"
+          ],
+          "optional": [],
+          "required": [
+            "lidar"
+          ]
+        },
+        "code": "SENSOR_POLICY",
+        "comparable": true,
+        "reason": "runtime sensor policies must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": [
+          "hilti_2022/basement_2",
+          "dc43d3e3e1345369ff73fec2b92d2cd5195a8e044770545abe8bdc4a0ccd198e"
+        ],
+        "candidate": [
+          "hilti_2022/basement_2",
+          "dc43d3e3e1345369ff73fec2b92d2cd5195a8e044770545abe8bdc4a0ccd198e"
+        ],
+        "code": "DATASET_FINGERPRINT",
+        "comparable": true,
+        "reason": "dataset sequence and exact content fingerprint must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": "dec7b20cc11002482ccb416a6e1a1c410d385b843504d3aedf7b5956746af1b6",
+        "candidate": "dec7b20cc11002482ccb416a6e1a1c410d385b843504d3aedf7b5956746af1b6",
+        "code": "GROUND_TRUTH_FINGERPRINT",
+        "comparable": true,
+        "reason": "ground-truth identity must be known and identical",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": "body",
+        "candidate": "body",
+        "code": "EVALUATION_FRAME",
+        "comparable": true,
+        "reason": "evaluation-frame semantics must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": {
+          "max_reference_gap_ns": null,
+          "max_time_delta_ns": 10000000,
+          "mode": "nearest"
+        },
+        "candidate": {
+          "max_reference_gap_ns": null,
+          "max_time_delta_ns": 10000000,
+          "mode": "nearest"
+        },
+        "code": "TIMESTAMP_ASSOCIATION",
+        "comparable": true,
+        "reason": "timestamp-association semantics must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": {
+          "coordinate_transform": {
+            "owner": "algorithm"
+          },
+          "crop": {
+            "owner": "none"
+          },
+          "duplicate_removal": {
+            "owner": "none"
+          },
+          "ground_removal": {
+            "owner": "none"
+          },
+          "intensity_filter": {
+            "owner": "none"
+          },
+          "motion_compensation": {
+            "input_state": "raw",
+            "performed_by": "algorithm"
+          },
+          "outlier_filter": {
+            "owner": "none"
+          },
+          "point_reordering": {
+            "owner": "none"
+          },
+          "range_filter": {
+            "owner": "algorithm"
+          },
+          "timestamp_reconstruction": {
+            "owner": "none"
+          },
+          "voxel_downsample": {
+            "owner": "algorithm"
+          }
+        },
+        "candidate": {
+          "coordinate_transform": {
+            "owner": "algorithm"
+          },
+          "crop": {
+            "owner": "none"
+          },
+          "duplicate_removal": {
+            "owner": "none"
+          },
+          "ground_removal": {
+            "owner": "none"
+          },
+          "intensity_filter": {
+            "owner": "none"
+          },
+          "motion_compensation": {
+            "input_state": "raw",
+            "performed_by": "algorithm"
+          },
+          "outlier_filter": {
+            "owner": "none"
+          },
+          "point_reordering": {
+            "owner": "none"
+          },
+          "range_filter": {
+            "owner": "algorithm"
+          },
+          "timestamp_reconstruction": {
+            "owner": "none"
+          },
+          "voxel_downsample": {
+            "owner": "algorithm"
+          }
+        },
+        "code": "PREPROCESSING_INPUT_SEMANTICS",
+        "comparable": true,
+        "reason": "benchmark/dataset-owned input preprocessing semantics must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": {
+          "alignment": "se3",
+          "ape_rotation": true,
+          "ape_translation": true,
+          "pose": {
+            "handedness": "right",
+            "quaternion_order": "xyzw",
+            "timestamp_unit": "int64_ns",
+            "transform": "T_W_B",
+            "translation_unit": "metre"
+          },
+          "relative_error_windows": [
+            {
+              "distance_m": 10.0,
+              "pairing": "all_starts_nearest_reference_distance",
+              "relative_tolerance": 0.1
+            },
+            {
+              "distance_m": 100.0,
+              "pairing": "all_starts_nearest_reference_distance",
+              "relative_tolerance": 0.1
+            }
+          ],
+          "scale_correction": false
+        },
+        "candidate": {
+          "alignment": "se3",
+          "ape_rotation": true,
+          "ape_translation": true,
+          "pose": {
+            "handedness": "right",
+            "quaternion_order": "xyzw",
+            "timestamp_unit": "int64_ns",
+            "transform": "T_W_B",
+            "translation_unit": "metre"
+          },
+          "relative_error_windows": [
+            {
+              "distance_m": 10.0,
+              "pairing": "all_starts_nearest_reference_distance",
+              "relative_tolerance": 0.1
+            },
+            {
+              "distance_m": 100.0,
+              "pairing": "all_starts_nearest_reference_distance",
+              "relative_tolerance": 0.1
+            }
+          ],
+          "scale_correction": false
+        },
+        "code": "TRAJECTORY_METRIC_PROTOCOL",
+        "comparable": true,
+        "reason": "trajectory metric semantics must match",
+        "scope": "accuracy"
+      },
+      {
+        "baseline": "end_to_end",
+        "candidate": "end_to_end",
+        "code": "TIMING_SCOPE",
+        "comparable": true,
+        "reason": "timing scopes must match",
+        "scope": "performance"
+      },
+      {
+        "baseline": "exploratory",
+        "candidate": "exploratory",
+        "code": "MEASUREMENT_CLASS",
+        "comparable": true,
+        "reason": "measurement classes must match for strict v0.1 comparison",
+        "scope": "performance"
+      },
+      {
+        "baseline": "8e1dde09caec98446dc98306bad670d96472614ab08c27cb8ae44c597daf5f30",
+        "candidate": "8e1dde09caec98446dc98306bad670d96472614ab08c27cb8ae44c597daf5f30",
+        "code": "HARDWARE_FINGERPRINT",
+        "comparable": true,
+        "reason": "recorded host hardware/environment fingerprints must match",
+        "scope": "performance"
+      },
+      {
+        "baseline": null,
+        "candidate": null,
+        "code": "PHYSICAL_HOST_IDENTITY",
+        "comparable": false,
+        "reason": "the same physical benchmark host must be explicitly identifiable",
+        "scope": "performance"
+      },
+      {
+        "baseline": null,
+        "candidate": [],
+        "code": "CPU_ALLOCATION",
+        "comparable": false,
+        "reason": "explicit CPU allocations must be non-empty and identical",
+        "scope": "performance"
+      },
+      {
+        "baseline": null,
+        "candidate": "KISS-ICP evalio default; max_num_threads=0",
+        "code": "THREAD_POLICY",
+        "comparable": false,
+        "reason": "explicit thread policies must be known and identical",
+        "scope": "performance"
+      },
+      {
+        "baseline": "warm",
+        "candidate": "warm",
+        "code": "CACHE_POLICY",
+        "comparable": true,
+        "reason": "cache policies must match",
+        "scope": "performance"
+      },
+      {
+        "baseline": [
+          "benchexec-runexec",
+          "runexec 3.35"
+        ],
+        "candidate": [
+          "benchexec-runexec",
+          "runexec 3.35"
+        ],
+        "code": "BENCHMARK_BACKEND",
+        "comparable": true,
+        "reason": "benchmark backend semantics and version must match",
+        "scope": "performance"
+      },
+      {
+        "baseline": {
+          "evalio": "0.6.1",
+          "lidarperf": "0.0.0"
+        },
+        "candidate": {
+          "evalio": "0.6.1",
+          "lidarperf": "0.0.0"
+        },
+        "code": "SOFTWARE_ENVIRONMENT",
+        "comparable": true,
+        "reason": "software environments must match unless dependencies are the declared subject",
+        "scope": "performance"
+      },
+      {
+        "baseline": false,
+        "candidate": false,
+        "code": "PERFORMANCE_AUTHORITY",
+        "comparable": false,
+        "reason": "both bundles must explicitly permit authoritative performance claims",
+        "scope": "performance"
+      },
+      {
+        "baseline": [
+          "kiss",
+          "https://github.com/PRBonn/kiss-icp"
+        ],
+        "candidate": [
+          "kiss",
+          "https://github.com/PRBonn/kiss-icp"
+        ],
+        "code": "METHOD_IDENTITY",
+        "comparable": true,
+        "reason": "source-code regression requires the same method family/repository",
+        "scope": "regression"
+      },
+      {
+        "baseline": "ca98119dbf045a99c0208935d61b0b43e7752b495a5786d12834bbb7b8eae95d",
+        "candidate": "2b25a29486b2990e26a99373c13ad0b8b43b4e520029bd6bab78dbac273aadec",
+        "code": "EXACT_PROTOCOL",
+        "comparable": false,
+        "reason": "strict regression requires the exact same resolved protocol",
+        "scope": "regression"
+      },
+      {
+        "baseline": "1b0272d5247797c77d526e6ce0004b3879368b57fb15b1ac6826f48b34f75bed",
+        "candidate": "1b0272d5247797c77d526e6ce0004b3879368b57fb15b1ac6826f48b34f75bed",
+        "code": "ALGORITHM_CONFIG",
+        "comparable": true,
+        "reason": "configuration must match unless config is the declared subject",
+        "scope": "regression"
+      },
+      {
+        "baseline": {},
+        "candidate": {},
+        "code": "BUILD_ENVIRONMENT",
+        "comparable": true,
+        "reason": "build environment must match unless explicitly declared",
+        "scope": "regression"
+      },
+      {
+        "baseline": {
+          "evalio": "0.6.1",
+          "lidarperf": "0.0.0"
+        },
+        "candidate": {
+          "evalio": "0.6.1",
+          "lidarperf": "0.0.0"
+        },
+        "code": "DEPENDENCY_SET",
+        "comparable": true,
+        "reason": "dependency set must match unless explicitly declared",
+        "scope": "regression"
+      },
+      {
+        "baseline": {
+          "paired_execution": null,
+          "pairing_id": null,
+          "trial_count": 1
+        },
+        "candidate": {
+          "paired_execution": null,
+          "pairing_id": null,
+          "trial_count": 5
+        },
+        "code": "PAIRED_REPETITION",
+        "comparable": false,
+        "reason": "strict regression requires repeated paired execution",
+        "scope": "regression"
+      }
+    ],
+    "declared_differences": [],
+    "metric_changes": {
+      "ape.rotation.rmse_deg": {
+        "absolute": 0.0,
+        "baseline": 47.89751763041686,
+        "candidate": 47.89751763041686,
+        "relative_percent": 0.0
+      },
+      "ape.translation.rmse_m": {
+        "absolute": 5.551115123125783e-17,
+        "baseline": 0.3374822950974683,
+        "candidate": 0.33748229509746835,
+        "relative_percent": 1.644861139018438e-14
+      },
+      "association.interpolated_pose_count": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "association.matched_pose_count": {
+        "absolute": 0.0,
+        "baseline": 119.0,
+        "candidate": 119.0,
+        "relative_percent": 0.0
+      },
+      "association.max_abs_time_delta_ns": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "association.mean_abs_time_delta_ns": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "association.unmatched_estimate_pose_count": {
+        "absolute": 0.0,
+        "baseline": 1.0,
+        "candidate": 1.0,
+        "relative_percent": 0.0
+      },
+      "coverage.distance_fraction": {
+        "absolute": 0.0,
+        "baseline": 1.0,
+        "candidate": 1.0,
+        "relative_percent": 0.0
+      },
+      "coverage.input_support_end_ns": {
+        "absolute": 0.0,
+        "baseline": 1.649764539962521e+18,
+        "candidate": 1.649764539962521e+18,
+        "relative_percent": 0.0
+      },
+      "coverage.input_support_start_ns": {
+        "absolute": 0.0,
+        "baseline": 1.649764528063481e+18,
+        "candidate": 1.649764528063481e+18,
+        "relative_percent": 0.0
+      },
+      "coverage.support_end_ns": {
+        "absolute": 0.0,
+        "baseline": 1.649764539962521e+18,
+        "candidate": 1.649764539962521e+18,
+        "relative_percent": 0.0
+      },
+      "coverage.support_start_ns": {
+        "absolute": 0.0,
+        "baseline": 1.649764528163469e+18,
+        "candidate": 1.649764528163469e+18,
+        "relative_percent": 0.0
+      },
+      "coverage.temporal_fraction": {
+        "absolute": 0.0,
+        "baseline": 1.0,
+        "candidate": 1.0,
+        "relative_percent": 0.0
+      },
+      "coverage.temporal_min_required": {
+        "absolute": 0.0,
+        "baseline": 0.98,
+        "candidate": 0.98,
+        "relative_percent": 0.0
+      },
+      "rpe.distance_100m.pair_count": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "rpe.distance_100m.relative_tolerance": {
+        "absolute": 0.0,
+        "baseline": 0.1,
+        "candidate": 0.1,
+        "relative_percent": 0.0
+      },
+      "rpe.distance_10m.pair_count": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "rpe.distance_10m.relative_tolerance": {
+        "absolute": 0.0,
+        "baseline": 0.1,
+        "candidate": 0.1,
+        "relative_percent": 0.0
+      },
+      "trajectory.estimate.invalid_pose_count": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      },
+      "trajectory.reference.invalid_pose_count": {
+        "absolute": 0.0,
+        "baseline": 0.0,
+        "candidate": 0.0,
+        "relative_percent": null
+      }
+    },
+    "observed_differences": [
+      "protocol.resolved_sha256",
+      "manifest.trial_count",
+      "environment.host",
+      "environment.execution"
+    ],
+    "performance_authoritative": false,
+    "performance_comparable": false,
+    "regression_comparable": false,
+    "resource_changes": {
+      "cpu_core_equivalents": {
+        "absolute": 0.0024088706769191948,
+        "baseline": 1.242331753326377,
+        "candidate": 1.244740624003296,
+        "relative_percent": 0.19389914734686434
+      },
+      "cpu_time_s": {
+        "absolute": -0.009375999999999607,
+        "baseline": 4.458963,
+        "candidate": 4.449587,
+        "relative_percent": -0.2102731061011183
+      },
+      "peak_memory_bytes": {
+        "absolute": -942080.0,
+        "baseline": 130203648.0,
+        "candidate": 129261568.0,
+        "relative_percent": -0.7235434755253555
+      },
+      "wall_time_s": {
+        "absolute": -0.014478430999986358,
+        "baseline": 3.5891886269999986,
+        "candidate": 3.5747101960000123,
+        "relative_percent": -0.40339008351556227
+      }
+    },
+    "schema_version": "lidarperf.comparison.v1"
+  },
+  "conformance_status": "conformant",
+  "cpu_model": "AMD EPYC 7763 64-Core Processor",
+  "created_at": "2026-09-14T19:58:51.792988+00:00",
+  "dataset_content_sha256": "dc43d3e3e1345369ff73fec2b92d2cd5195a8e044770545abe8bdc4a0ccd198e",
+  "dataset_fingerprint_class": "exact",
+  "dataset_id": "hilti_2022/basement_2",
+  "failed_trials": 0,
+  "host_control_mode": "uncontrolled",
+  "host_sha256": "8e1dde09caec98446dc98306bad670d96472614ab08c27cb8ae44c597daf5f30",
+  "measurement_class": "exploratory",
+  "method_commit": null,
+  "method_name": "kiss",
+  "method_version": "1.3.0",
+  "metrics": {
+    "ape.rotation.rmse_deg": {
+      "count": 5,
+      "maximum": 47.89751763041688,
+      "mean": 47.89751763041685,
+      "median": 47.89751763041686,
+      "minimum": 47.897517630416814,
+      "p90": 47.89751763041687,
+      "p95": 47.89751763041688,
+      "p99": 47.89751763041688,
+      "std": 2.3566036520288945e-14
+    },
+    "ape.translation.rmse_m": {
+      "count": 5,
+      "maximum": 0.3374822950974686,
+      "mean": 0.33748229509746835,
+      "median": 0.33748229509746835,
+      "minimum": 0.33748229509746813,
+      "p90": 0.3374822950974685,
+      "p95": 0.3374822950974686,
+      "p99": 0.3374822950974686,
+      "std": 1.510066572755813e-16
+    },
+    "association.interpolated_pose_count": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "association.matched_pose_count": {
+      "count": 5,
+      "maximum": 119.0,
+      "mean": 119.0,
+      "median": 119.0,
+      "minimum": 119.0,
+      "p90": 119.0,
+      "p95": 119.0,
+      "p99": 119.0,
+      "std": 0.0
+    },
+    "association.max_abs_time_delta_ns": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "association.mean_abs_time_delta_ns": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "association.unmatched_estimate_pose_count": {
+      "count": 5,
+      "maximum": 1.0,
+      "mean": 1.0,
+      "median": 1.0,
+      "minimum": 1.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "std": 0.0
+    },
+    "coverage.distance_fraction": {
+      "count": 5,
+      "maximum": 1.0,
+      "mean": 1.0,
+      "median": 1.0,
+      "minimum": 1.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "std": 0.0
+    },
+    "coverage.input_support_end_ns": {
+      "count": 5,
+      "maximum": 1.649764539962521e+18,
+      "mean": 1.649764539962521e+18,
+      "median": 1.649764539962521e+18,
+      "minimum": 1.649764539962521e+18,
+      "p90": 1.649764539962521e+18,
+      "p95": 1.649764539962521e+18,
+      "p99": 1.649764539962521e+18,
+      "std": 0.0
+    },
+    "coverage.input_support_start_ns": {
+      "count": 5,
+      "maximum": 1.649764528063481e+18,
+      "mean": 1.649764528063481e+18,
+      "median": 1.649764528063481e+18,
+      "minimum": 1.649764528063481e+18,
+      "p90": 1.649764528063481e+18,
+      "p95": 1.649764528063481e+18,
+      "p99": 1.649764528063481e+18,
+      "std": 0.0
+    },
+    "coverage.support_end_ns": {
+      "count": 5,
+      "maximum": 1.649764539962521e+18,
+      "mean": 1.649764539962521e+18,
+      "median": 1.649764539962521e+18,
+      "minimum": 1.649764539962521e+18,
+      "p90": 1.649764539962521e+18,
+      "p95": 1.649764539962521e+18,
+      "p99": 1.649764539962521e+18,
+      "std": 0.0
+    },
+    "coverage.support_start_ns": {
+      "count": 5,
+      "maximum": 1.649764528163469e+18,
+      "mean": 1.649764528163469e+18,
+      "median": 1.649764528163469e+18,
+      "minimum": 1.649764528163469e+18,
+      "p90": 1.649764528163469e+18,
+      "p95": 1.649764528163469e+18,
+      "p99": 1.649764528163469e+18,
+      "std": 0.0
+    },
+    "coverage.temporal_fraction": {
+      "count": 5,
+      "maximum": 1.0,
+      "mean": 1.0,
+      "median": 1.0,
+      "minimum": 1.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "std": 0.0
+    },
+    "coverage.temporal_min_required": {
+      "count": 5,
+      "maximum": 0.98,
+      "mean": 0.9800000000000001,
+      "median": 0.98,
+      "minimum": 0.98,
+      "p90": 0.98,
+      "p95": 0.98,
+      "p99": 0.98,
+      "std": 1.1102230246251565e-16
+    },
+    "rpe.distance_100m.pair_count": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "rpe.distance_100m.relative_tolerance": {
+      "count": 5,
+      "maximum": 0.1,
+      "mean": 0.1,
+      "median": 0.1,
+      "minimum": 0.1,
+      "p90": 0.1,
+      "p95": 0.1,
+      "p99": 0.1,
+      "std": 0.0
+    },
+    "rpe.distance_10m.pair_count": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "rpe.distance_10m.relative_tolerance": {
+      "count": 5,
+      "maximum": 0.1,
+      "mean": 0.1,
+      "median": 0.1,
+      "minimum": 0.1,
+      "p90": 0.1,
+      "p95": 0.1,
+      "p99": 0.1,
+      "std": 0.0
+    },
+    "trajectory.estimate.invalid_pose_count": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "trajectory.reference.invalid_pose_count": {
+      "count": 5,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    }
+  },
+  "performance_authoritative": false,
+  "performance_authority_reason": "GitHub-hosted runner; repeated BenchExec accounting validates run-set semantics but is not a stable performance baseline",
+  "protocol_id": "lidarperf/lo-se3-hilti-step10",
+  "protocol_sha256": "2b25a29486b2990e26a99373c13ad0b8b43b4e520029bd6bab78dbac273aadec",
+  "protocol_version": 1,
+  "regression": null,
+  "repeatability": {
+    "common_pose_count": {
+      "count": 10,
+      "maximum": 120.0,
+      "mean": 120.0,
+      "median": 120.0,
+      "minimum": 120.0,
+      "p90": 120.0,
+      "p95": 120.0,
+      "p99": 120.0,
+      "std": 0.0
+    },
+    "maximum_pose_rotation_delta_deg": 2.4148365394514667e-06,
+    "maximum_pose_translation_delta_m": 0.0,
+    "rotation_pairwise_rmse_deg": {
+      "count": 10,
+      "maximum": 8.394234873208816e-07,
+      "mean": 8.394234873208816e-07,
+      "median": 8.394234873208816e-07,
+      "minimum": 8.394234873208816e-07,
+      "p90": 8.394234873208816e-07,
+      "p95": 8.394234873208816e-07,
+      "p99": 8.394234873208816e-07,
+      "std": 0.0
+    },
+    "semantics": "all_pairwise_exact_timestamp_pose_differences_no_spatial_alignment",
+    "timestamp_sets_identical": true,
+    "translation_pairwise_rmse_m": {
+      "count": 10,
+      "maximum": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "std": 0.0
+    },
+    "trial_pair_count": 10
+  },
+  "resources": {
+    "cpu_core_equivalents": {
+      "count": 5,
+      "maximum": 1.2486952845311414,
+      "mean": 1.2440721903761356,
+      "median": 1.244740624003296,
+      "minimum": 1.2395466962095711,
+      "p90": 1.2476997652389101,
+      "p95": 1.2481975248850257,
+      "p99": 1.2485957326019184,
+      "std": 0.003324666331088712
+    },
+    "cpu_time_s": {
+      "count": 5,
+      "maximum": 4.487449,
+      "mean": 4.4439166,
+      "median": 4.449587,
+      "minimum": 4.388006,
+      "p90": 4.4873134,
+      "p95": 4.4873812,
+      "p99": 4.48743544,
+      "std": 0.040620406913766983
+    },
+    "peak_memory_bytes": {
+      "count": 5,
+      "maximum": 129425408.0,
+      "mean": 129227161.6,
+      "median": 129261568.0,
+      "minimum": 128905216.0,
+      "p90": 129405747.2,
+      "p95": 129415577.6,
+      "p99": 129423441.92,
+      "std": 184358.22536963195
+    },
+    "wall_time_s": {
+      "count": 5,
+      "maximum": 3.62023392399999,
+      "mean": 3.5721830593999924,
+      "median": 3.5747101960000123,
+      "minimum": 3.5140726919999565,
+      "p90": 3.6182285687999864,
+      "p95": 3.6192312463999885,
+      "p99": 3.62003338847999,
+      "std": 0.041964089562811314
+    }
+  },
+  "result_id": "d76a6442-cda2-4718-bf8d-9ac9bfaf10d7",
+  "schema_version": "lidarperf.report.v1",
+  "successful_trials": 5,
+  "timing_scope": "end_to_end",
+  "track": "lo",
+  "trajectory_pose_count": 120,
+  "trajectory_xy_bounds_m": [
+    -0.013398028807,
+    0.765611691677,
+    -2.353722629815,
+    0.055204835427
+  ],
+  "trial_count": 5,
+  "verification_issues": [],
+  "verification_status": "VALID",
+  "warmup_trials": 1,
+  "warnings": [
+    "Performance evidence is non-authoritative: GitHub-hosted runner; repeated BenchExec accounting validates run-set semantics but is not a stable performance baseline"
+  ]
+}
