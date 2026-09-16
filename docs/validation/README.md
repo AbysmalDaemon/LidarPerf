@@ -39,4 +39,9 @@ lidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf \
   > docs/validation/step14_kiss_hilti_bencher.json
 ```
 
-The warning about suppressed Bencher alerts is written to stderr and therefore does not contaminate the JSON stream.
+The warning about suppressed Bencher alerts is written to stderr and therefore does not contaminate the JSON stream. The same stdout can be consumed directly by Bencher's JSON adapter:
+
+```bash
+bencher run --adapter json \
+  "lidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf"
+```
