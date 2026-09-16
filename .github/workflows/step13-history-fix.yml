@@ -1,0 +1,63 @@
+name: Step 13 history update
+
+on:
+  push:
+    branches: [step13-reporting]
+    paths:
+      - '.github/workflows/step13-history-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: step13-reporting
+      - name: Update living Step 13 validation record
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('LidarPerf_research_execution_plan.md')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '- Added six Step 13 tests covering the real repeated Step 10 bundle, Step 9 single-trial resource\n'
+              '  fallback, portable HTML/JSON generation, Step 11 comparison attachment, invalid bundle and\n'
+              '  unrelated-comparison rejection, and the Typer CLI path.\n'
+              '- Full suite increased from 151 to 157 tests.\n',
+              '- Added eight Step 13 tests covering the real repeated Step 10 bundle, Step 9 single-trial\n'
+              '  resource fallback, portable HTML/JSON generation, Step 11 comparison attachment, Step 12\n'
+              '  regression attachment, HTML metadata escaping, invalid bundle and unrelated-comparison\n'
+              '  rejection, and the Typer CLI path.\n'
+              '- Full suite increased from 151 to 159 tests.\n',
+          )
+          text = text.replace(
+              '157-test full-suite validation, exact final-head Python 3.11/3.12/3.13 CI, merge, and post-merge',
+              '159-test full-suite validation, exact final-head Python 3.11/3.12/3.13 CI, merge, and post-merge',
+          )
+          marker = (
+              '3. Dedicated behavior was then added rather than treating the lint-clean implementation as proof.\n'
+              '   The real report tests and CLI path passed in CI run `35135211926` across all supported Python\n'
+              '   versions.\n'
+          )
+          addition = (
+              '4. A final coverage pass added explicit Step 12 regression-context rendering and HTML metadata\n'
+              '   escaping tests. CI run `35135566923` passed Ruff and all 159 tests on Python 3.11, 3.12,\n'
+              '   and 3.13.\n'
+          )
+          if addition not in text:
+              text = text.replace(marker, marker + addition)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit and remove one-shot workflow
+        run: |
+          git rm .github/workflows/step13-history-fix.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: finalize Step 13 validation history'
+          git push origin HEAD:step13-reporting
