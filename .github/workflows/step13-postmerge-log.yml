@@ -1,0 +1,26 @@
+name: Step 13 post-merge closure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/step13-postmerge-log.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  close:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append closure and remove one-shot workflow
+        run: |
+          echo 'CgojIyMgU3RlcCAxMyBwb3N0LW1lcmdlIGNsb3N1cmUg4oCUIDE2IFNlcHRlbWJlciAyMDI2CgpTdGVwIDEzIGlzIGNsb3NlZC4KCi0gUFIgIzE1IChgZmVhdDogYWRkIFN0ZXAgMTMgc2VsZi1jb250YWluZWQgcmVwb3J0c2ApIHdhcyBzcXVhc2gtbWVyZ2VkIGFzIGAwZWQxNzI0YjlhZjA3YmYyNjI4MzAxZDZlNWFkZWE5MThiNTAyNWU3YC4KLSBFeGFjdCBmaW5hbCBQUiBoZWFkOiBgZDI3NjIzMzFjMDBmOTM1NjlmYzNlMDdhYTdhZWE0MzIzY2IwZDYyY2AuCi0gRmluYWwgUFItaGVhZCBDSSBydW4gYDM1MTM1NzMyNjU4YCBwYXNzZWQgUHl0aG9uIDMuMTEsIDMuMTIsIGFuZCAzLjEzLgotIFBvc3QtbWVyZ2UgYG1haW5gIENJIHJ1biBgMzUxMzU4NzQ2MzZgIHBhc3NlZCBQeXRob24gMy4xMSwgMy4xMiwgYW5kIDMuMTMuCi0gRmluYWwgcGVybWFuZW50IHRlc3Qgc3VpdGU6IDE1OSBwYXNzZWQ7IFJ1ZmYgZ3JlZW4uCi0gRHVyYWJsZSByZXBvcnQgZXZpZGVuY2UgaXMgYGRvY3MvdmFsaWRhdGlvbi9zdGVwMTNfa2lzc19oaWx0aV9yZXBvcnQuaHRtbGAgYW5kIGBkb2NzL3ZhbGlkYXRpb24vc3RlcDEzX2tpc3NfaGlsdGlfcmVwb3J0Lmpzb25gLgotIFRoZSBkdXJhYmxlIHJlcG9ydCBpcyBkZXJpdmVkIGZyb20gdGhlIHZlcmlmaWVkIFN0ZXAgMTAgS0lTUy1JQ1AvSGlsdGkgYnVuZGxlIHBsdXMgU3RlcCAxMSBjb21wYXJpc29uIGV2aWRlbmNlLiBJdCBkb2VzIG5vdCBjcmVhdGUgYSBuZXcgYmVuY2htYXJrIHJlc3VsdCBhbmQgcHJlc2VydmVzIHRoZSB1bmRlcmx5aW5nIGBleHBsb3JhdG9yeWAgLyBub24tYXV0aG9yaXRhdGl2ZSBob3N0ZWQtcGVyZm9ybWFuY2Ugc3RhdHVzLgotIFRlbXBvcmFyeSBTdGVwIDEzIHJlcGFpciwgY2xvc3VyZSwgYW5kIGhpc3Rvcnkgd29ya2Zsb3dzIHdlcmUgcmVtb3ZlZDsgdGhlIHBlcm1hbmVudCB3b3JrZmxvdyBzZXQgcmV0dXJucyB0byBub3JtYWwgYGNpLnltbGAgb25seS4KLSBTdGVwIDEzIGlzIGNvbXBsZXRlLiBTdGVwIDE0IGlzIEJlbmNoZXIgZXhwb3J0OiBtYXAgdmVyaWZpZWQgTGlkYXJQZXJmIHJlc3VsdC9jb21wYXJpc29uL3JlZ3Jlc3Npb24gc2VtYW50aWNzIGludG8gYSBzdGFibGUgQmVuY2hlci1jb21wYXRpYmxlIG1hY2hpbmUtcmVhZGFibGUgb3V0cHV0IHdpdGhvdXQgd2Vha2VuaW5nIExpZGFyUGVyZidzIG93biBldmlkZW5jZSBtb2RlbC4K' | base64 -d >> LidarPerf_research_execution_plan.md
+          git rm .github/workflows/step13-postmerge-log.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close Step 13 execution history'
+          git push
