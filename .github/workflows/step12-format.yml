@@ -1,0 +1,40 @@
+name: Step 12 format and validate
+
+on:
+  push:
+    branches: [step12-regression-engine]
+    paths:
+      - '.github/workflows/step12-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: step12-regression-engine
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Format
+        run: |
+          ruff check --fix src/lidarperf/regression.py src/lidarperf/cli.py tests/test_regression.py
+          ruff format src/lidarperf/regression.py src/lidarperf/cli.py tests/test_regression.py
+      - name: Validate
+        run: |
+          ruff check .
+          pytest -q
+      - name: Commit formatted core and remove one-shot workflow
+        run: |
+          git rm .github/workflows/step12-format.yml
+          git add src/lidarperf/regression.py src/lidarperf/cli.py tests/test_regression.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: format and validate Step 12 core'
+          git push origin HEAD:step12-regression-engine
