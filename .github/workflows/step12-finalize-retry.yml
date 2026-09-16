@@ -24,6 +24,7 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Validate and generate evidence
         run: |
+          ruff check --fix scripts/_step12_finalize.py
           ruff check .
           pytest -q
           python scripts/run_step12_validation.py
