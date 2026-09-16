@@ -5,6 +5,7 @@ from .bencher import (
     BencherExportError,
     BencherMetric,
     build_bencher_export,
+    export_report_to_bencher,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "BencherExportError",
     "BencherMetric",
     "build_bencher_export",
+    "export_report_to_bencher",
 ]
