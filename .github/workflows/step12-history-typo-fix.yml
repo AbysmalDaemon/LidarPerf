@@ -1,0 +1,26 @@
+name: Step 12 history typo fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/step12-history-typo-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix history text and remove workflow
+        run: |
+          python -c "from pathlib import Path; p=Path('LidarPerf_research_execution_plan.md'); s=p.read_text(encoding='utf-8'); assert 'Step 9ↂStep 10' in s; p.write_text(s.replace('Step 9ↂStep 10', 'Step 9→Step 10'), encoding='utf-8')"
+          git rm .github/workflows/step12-history-typo-fix.yml
+          git add LidarPerf_research_execution_plan.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: fix Step 12 history encoding typo'
+          git push
