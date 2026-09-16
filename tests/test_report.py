@@ -5,7 +5,14 @@ import pytest
 from typer.testing import CliRunner
 
 from lidarperf.cli import app
-from lidarperf.report import BundleReport, ReportError, build_report, write_report
+from lidarperf.regression import RegressionPolicy, RegressionVerdict, regress_bundles
+from lidarperf.report import (
+    BundleReport,
+    ReportError,
+    build_report,
+    render_html,
+    write_report,
+)
 
 STEP9 = Path("docs/validation/step9_kiss_hilti.lperf")
 STEP10 = Path("docs/validation/step10_kiss_hilti_repeated.lperf")
@@ -62,6 +69,33 @@ def test_report_writes_portable_html_json_and_comparison_context(tmp_path: Path)
     assert "https://" not in html
     assert "http://" not in html
     assert "<script" not in html.lower()
+
+
+def test_report_attaches_versioned_regression_context(tmp_path: Path) -> None:
+    regression = regress_bundles(STEP9, STEP10, policy=RegressionPolicy())
+    assert regression.verdict == RegressionVerdict.NOT_COMPARABLE
+    regression_path = tmp_path / "regression.json"
+    regression_path.write_text(regression.model_dump_json(indent=2), encoding="utf-8")
+    html_path = tmp_path / "with-regression.html"
+
+    report = write_report(STEP10, html_path=html_path, regression_path=regression_path)
+
+    assert report.regression is not None
+    assert report.regression.verdict == RegressionVerdict.NOT_COMPARABLE
+    html = html_path.read_text(encoding="utf-8")
+    assert "Regression context" in html
+    assert "NOT_COMPARABLE" in html
+
+
+def test_report_escapes_metadata_in_html() -> None:
+    report = build_report(STEP10).model_copy(
+        update={"method_name": "<script>alert('report')</script>"}
+    )
+
+    html = render_html(report, ())
+
+    assert "<script>alert" not in html
+    assert "&lt;script&gt;alert" in html
 
 
 def test_report_rejects_invalid_bundle(tmp_path: Path) -> None:
