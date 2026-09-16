@@ -1,0 +1,37 @@
+{
+  "lidarperf-lo-kiss-hilti-2022-basement-2-data-dc43d3e3e134-lidarperf-lo-se3-hilti-step10-protocol-v1-protocol-2b25a29486b2-exploratory-bencher-ignore": {
+    "lidarperf-ape-rotation-rmse-deg": {
+      "value": 47.89751763041686
+    },
+    "lidarperf-ape-translation-rmse-m": {
+      "value": 0.33748229509746835
+    },
+    "lidarperf-coverage-distance-ratio": {
+      "value": 1.0
+    },
+    "lidarperf-coverage-temporal-ratio": {
+      "value": 1.0
+    },
+    "lidarperf-cpu-core-equivalents": {
+      "value": 1.244740624003296
+    },
+    "lidarperf-cpu-time-s": {
+      "value": 4.449587
+    },
+    "lidarperf-output-rotation-rmse-deg": {
+      "value": 8.394234873208816e-07
+    },
+    "lidarperf-output-translation-rmse-m": {
+      "value": 0.0
+    },
+    "lidarperf-peak-memory-bytes": {
+      "value": 129261568.0
+    },
+    "lidarperf-trial-success-ratio": {
+      "value": 1.0
+    },
+    "lidarperf-wall-time-s": {
+      "value": 3.5747101960000123
+    }
+  }
+}

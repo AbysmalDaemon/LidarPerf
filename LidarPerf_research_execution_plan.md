@@ -3530,3 +3530,55 @@ Step 13 is closed.
 - The durable report is derived from the verified Step 10 KISS-ICP/Hilti bundle plus Step 11 comparison evidence. It does not create a new benchmark result and preserves the underlying `exploratory` / non-authoritative hosted-performance status.
 - Temporary Step 13 repair, closure, and history workflows were removed; the permanent workflow set returns to normal `ci.yml` only.
 - Step 13 is complete. Step 14 is Bencher export: map verified LidarPerf result/comparison/regression semantics into a stable Bencher-compatible machine-readable output without weakening LidarPerf's own evidence model.
+
+
+---
+
+## Step 14 implementation record — 16 September 2026
+
+Step 14 implements the Phase 14 decision to export verified LidarPerf evidence to Bencher rather than building a benchmark-history service. The user-facing command is:
+
+```bash
+lidarperf export bencher result.lperf
+```
+
+### External format research
+
+The implementation was checked against the current Bencher documentation on 16 September 2026:
+
+- `https://bencher.dev/docs/reference/bencher-metric-format/`
+- `https://bencher.dev/docs/how-to/track-custom-benchmarks/`
+- `https://bencher.dev/docs/explanation/thresholds/`
+
+Current Bencher Metric Format (BMF) uses a JSON object keyed by benchmark name, then measure name, with a required numeric `value` and optional `lower_value` / `upper_value`. Bencher also documents `-bencher-ignore`, `_bencher_ignore`, and `BencherIgnore` benchmark-name suffixes for storing metrics while suppressing alerts. `bencher run --adapter json` accepts BMF JSON from a custom benchmark command.
+
+### Design decisions
+
+1. The CLI emits **pure BMF JSON**, not a LidarPerf wrapper. Diagnostics go to stderr so stdout can be piped directly to `bencher run --adapter json`.
+2. The source `.lperf` bundle is independently verified by reusing the Step 13 report-building path. Invalid bundles are refused.
+3. Export is an explicit allowlist, not a dump of every numeric field. Stable measures cover APE translation/rotation RMSE, temporal/distance coverage, wall/CPU time, peak memory, CPU-core equivalents, output-repeatability RMSE, and measured-trial success ratio when available.
+4. Repeated scalar values export the **median**. BMF `lower_value` / `upper_value` are deliberately omitted because Step 10 run-set spread is not a statistical confidence interval and must not be mislabeled as one.
+5. The Bencher benchmark identity includes track, method family, dataset ID, exact dataset-content fingerprint prefix, protocol ID/version, resolved-protocol fingerprint prefix, and LidarPerf measurement class. This keeps incompatible dataset/protocol/measurement-strength histories from silently sharing one Bencher series.
+6. Result UUIDs, host fingerprints, CPU model, local paths, process logs, and command lines are excluded from the BMF payload. This makes the export a deliberately narrow public-safe metric view. It does **not** replace the broader SPEC Section 72 future sanitization requirement for publishing whole result bundles.
+7. Evidence cannot be upgraded by export. If `performance_authoritative` is false, conformance is not `conformant`, or any measured trial failed, the benchmark name automatically receives Bencher's `-bencher-ignore` suffix. There is no force-alert override. Controlled authoritative conformant evidence with no failed measured trials exports without that suffix.
+8. Bencher remains a history/visualization/threshold service. LidarPerf remains authoritative for conformance, comparability, accuracy gating, paired-regression semantics, and whether a performance claim is defensible.
+
+### Implementation
+
+- `src/lidarperf/export/bencher.py` implements BMF conversion and authority-safe benchmark naming.
+- `src/lidarperf/export_cli.py` keeps stdout machine-readable and diagnostics on stderr.
+- `src/lidarperf/cli.py` exposes `lidarperf export bencher`.
+- `scripts/run_step14_validation.py` regenerates and validates the durable real export.
+- `tests/test_bencher_export.py` covers BMF shape, semantic naming, authority suppression, public-safe field exclusion, single-trial fallback, invalid-bundle refusal, stdout purity, and file output.
+
+### Failure / tooling history
+
+The first ordinary PR matrix on intermediate head `1f693251d16cb51bf45ee5572f4c84322c8c7f26`, run **35138577074**, failed on Python 3.11/3.12/3.13 with exactly two Step 14 CLI tests failing and 165 tests passing. Ruff was green. The failure was `No such command 'export'`: the matrix checked out the intermediate PR merge commit before the one-shot CLI-wiring workflow had committed the new Typer subcommand. This was an ordering/tooling failure, not a Bencher-conversion failure, and is retained here rather than erased.
+
+One-shot workflow **35138572844** then wired the CLI, ran Ruff successfully, and passed the complete **167-test** suite on Python 3.11 before self-deleting. The resulting source commit was `23e8eaa0f352c96a85dcc1b7e6d116c2429de507`.
+
+### Durable real validation
+
+`docs/validation/step14_kiss_hilti_bencher.json` is generated from the committed Step 10 KISS-ICP/Hilti repeated bundle using the actual CLI. The export preserves the Step 10 result as descriptive hosted evidence: the benchmark identity ends in `-bencher-ignore`, wall time is the Step 10 median (~3.574710196 s), trial success ratio is 1.0, and no result UUID / host fingerprint / local trial path is emitted. This is an interoperability artifact, not an additional KISS-ICP benchmark execution or an authoritative performance claim.
+
+Step 14 is complete only after the exact final PR head passes the normal Python 3.11/3.12/3.13 matrix, PR #16 is squash-merged, post-merge `main` CI is green, and the final merge/CI state is appended to this living record.
