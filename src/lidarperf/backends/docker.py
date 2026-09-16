@@ -346,7 +346,7 @@ class DockerBackend:
                     self._docker_path,
                     "version",
                     "--format",
-                    "{{.Client.Version}}\\t{{.Server.Version}}",
+                    "{{.Client.Version}}|{{.Server.Version}}",
                 ],
                 check=False,
                 capture_output=True,
@@ -369,7 +369,7 @@ class DockerBackend:
             )
             return self._capability
 
-        fields = result.stdout.strip().split("\t")
+        fields = result.stdout.strip().split("|", 1)
         if len(fields) != 2 or not all(fields):
             self._capability = DockerCapability(
                 installed=True,

@@ -28,7 +28,7 @@ class FakeDockerRunner:
         argv = tuple(str(item) for item in args)
         self.calls.append(argv)
         if argv[1] == "version":
-            return subprocess.CompletedProcess(argv, 0, "27.3.1\t27.3.1\n", "")
+            return subprocess.CompletedProcess(argv, 0, "27.3.1|27.3.1\n", "")
         if argv[1:3] == ("image", "inspect"):
             payload = [{"Id": IMAGE_ID, "RepoDigests": self.repo_digests}]
             return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
@@ -94,7 +94,7 @@ def test_image_inspection_rejects_malformed_image_identity() -> None:
         def __call__(self, args, **kwargs):
             argv = tuple(str(item) for item in args)
             if argv[1] == "version":
-                return subprocess.CompletedProcess(argv, 0, "27.3.1\t27.3.1\n", "")
+                return subprocess.CompletedProcess(argv, 0, "27.3.1|27.3.1\n", "")
             if argv[1:3] == ("image", "inspect"):
                 return subprocess.CompletedProcess(argv, 0, '[{"Id":"not-a-digest"}]', "")
             raise AssertionError(argv)
