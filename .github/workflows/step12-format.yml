@@ -22,8 +22,27 @@ jobs:
           python-version: '3.11'
       - name: Install
         run: python -m pip install -e '.[dev]'
-      - name: Format
+      - name: Patch and format
         run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lidarperf/regression.py')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          output = []
+          for line in lines:
+              if 'is marked successful with exit_code=' in line:
+                  indent = line[: len(line) - len(line.lstrip())]
+                  output.append(indent + 'f"{label} trial {trial.trial_index} is marked successful "')
+                  output.append(indent + 'f"with exit_code={trial.exit_code}"')
+              elif 'absolute maximum {gate.limit:.9g}' in line:
+                  indent = line[: len(line) - len(line.lstrip())]
+                  output.append(indent + 'f"candidate {candidate:.9g} {\'<=\' if passed else \'>\'} "')
+                  output.append(indent + 'f"absolute maximum {gate.limit:.9g}"')
+              else:
+                  output.append(line)
+          path.write_text('\n'.join(output) + '\n', encoding='utf-8')
+          PY
           ruff format src/lidarperf/regression.py src/lidarperf/cli.py tests/test_regression.py
           ruff check --fix src/lidarperf/regression.py src/lidarperf/cli.py tests/test_regression.py
       - name: Validate
