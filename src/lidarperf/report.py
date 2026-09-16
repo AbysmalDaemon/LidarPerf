@@ -1,5 +1,7 @@
 """Verified, self-contained HTML reporting for LidarPerf result bundles."""
 
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import json
@@ -144,7 +146,9 @@ def _summaries(values: dict[str, Any]) -> dict[str, NumericSummary]:
     return summaries
 
 
-def _aggregate_views(root: Path) -> tuple[
+def _aggregate_views(
+    root: Path,
+) -> tuple[
     int,
     int,
     dict[str, NumericSummary],
@@ -192,14 +196,18 @@ def _fallback_resources(root: Path, trial_count: int) -> dict[str, NumericSummar
         mean = sum(ordered) / count
         variance = sum((item - mean) ** 2 for item in ordered) / count
 
-        def percentile(fraction: float) -> float:
-            if count == 1:
-                return ordered[0]
-            position = fraction * (count - 1)
+        def percentile(
+            fraction: float,
+            ordered_values: list[float] = ordered,
+            value_count: int = count,
+        ) -> float:
+            if value_count == 1:
+                return ordered_values[0]
+            position = fraction * (value_count - 1)
             lower = int(math.floor(position))
             upper = int(math.ceil(position))
             weight = position - lower
-            return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+            return ordered_values[lower] * (1.0 - weight) + ordered_values[upper] * weight
 
         result[name] = NumericSummary(
             count=count,
@@ -282,7 +290,9 @@ def build_report(
         baseline = getattr(attached, "baseline_result_id", None)
         candidate = getattr(attached, "candidate_result_id", None)
         if result_id not in {baseline, candidate}:
-            raise ReportError("attached comparison/regression does not reference this result bundle")
+            raise ReportError(
+                "attached comparison/regression does not reference this result bundle"
+            )
 
     warnings = [
         f"{issue.severity.value.upper()} [{issue.code}] {issue.message}"
@@ -291,7 +301,9 @@ def build_report(
     authoritative = execution.get("performance_authoritative") is True
     authority_reason = execution.get("performance_authority_reason")
     if not authoritative:
-        reason = authority_reason if isinstance(authority_reason, str) else "not declared authoritative"
+        reason = (
+            authority_reason if isinstance(authority_reason, str) else "not declared authoritative"
+        )
         warnings.append(f"Performance evidence is non-authoritative: {reason}")
     if failed:
         warnings.append(f"{failed} measured trial(s) failed; inspect retained trial evidence.")
@@ -319,7 +331,11 @@ def build_report(
         performance_authority_reason=(
             authority_reason if isinstance(authority_reason, str) else None
         ),
-        timing_scope=(execution.get("timing_scope") if isinstance(execution.get("timing_scope"), str) else None),
+        timing_scope=(
+            execution.get("timing_scope")
+            if isinstance(execution.get("timing_scope"), str)
+            else None
+        ),
         host_control_mode=(
             execution.get("host_control_mode")
             if isinstance(execution.get("host_control_mode"), str)
@@ -445,7 +461,7 @@ def _metric_table(title: str, values: dict[str, NumericSummary]) -> str:
             "</tr>"
         )
     return (
-        f"<section><h2>{escape(title)}</h2><div class=\"table-wrap\"><table>"
+        f'<section><h2>{escape(title)}</h2><div class="table-wrap"><table>'
         "<thead><tr><th>Metric</th><th>Median</th><th>Mean</th><th>Std</th>"
         "<th>P95</th><th>Distribution</th></tr></thead><tbody>"
         + "".join(rows)
@@ -469,8 +485,7 @@ def _comparison_html(report: ComparisonReport | None) -> str:
     )
     failures = [check for check in report.checks if not check.comparable]
     reasons = "".join(
-        f"<li><code>{escape(check.scope)}:{escape(check.code)}</code> "
-        f"{escape(check.reason)}</li>"
+        f"<li><code>{escape(check.scope)}:{escape(check.code)}</code> {escape(check.reason)}</li>"
         for check in failures
     )
     return (
@@ -538,7 +553,7 @@ def render_html(report: BundleReport, trajectory_xy: tuple[tuple[float, float], 
         translation = report.repeatability.get("translation_pairwise_rmse_m")
         rotation = report.repeatability.get("rotation_pairwise_rmse_deg")
         timestamp_sets = report.repeatability.get("timestamp_sets_identical")
-        repeatability = "<section><h2>Estimator-output repeatability</h2><div class=\"kpi-grid\">"
+        repeatability = '<section><h2>Estimator-output repeatability</h2><div class="kpi-grid">'
         for label, value, name in (
             ("Pairwise translation RMSE", translation, "translation_pairwise_rmse_m"),
             ("Pairwise rotation RMSE", rotation, "rotation_pairwise_rmse_deg"),
@@ -602,30 +617,30 @@ word-break:break-all; }} footer {{ color:var(--muted); margin-top:26px; font-siz
 <div class="badge"><span>Conformance</span><strong>{escape(report.conformance_status)}</strong></div>
 <div class="badge {authority_class}"><span>Performance authority</span><strong>{authority}</strong></div>
 </div></section>
-{f'<section class="notice"><h2>Scientific caveats</h2><ul class="issues">{warnings}</ul></section>' if warnings else ''}
+{f'<section class="notice"><h2>Scientific caveats</h2><ul class="issues">{warnings}</ul></section>' if warnings else ""}
 <section><h2>Run summary</h2><div class="kpi-grid">
 <div class="kpi"><span>Measured trials</span><strong>{report.trial_count}</strong></div>
 <div class="kpi good"><span>Successful</span><strong>{report.successful_trials}</strong></div>
 <div class="kpi bad"><span>Failed</span><strong>{report.failed_trials}</strong></div>
 <div class="kpi"><span>Warmups</span><strong>{report.warmup_trials}</strong></div>
-{''.join(cards)}
+{"".join(cards)}
 </div></section>
 <section><h2>Trajectory preview</h2>{_trajectory_svg(trajectory_xy)}
 <p>{report.trajectory_pose_count} poses; XY preview is presentation only and does not replace protocol-scoped trajectory metrics.</p></section>
-{_metric_table('Accuracy and validity metrics', report.metrics)}
-{_metric_table('Runtime and resource measurements', report.resources)}
+{_metric_table("Accuracy and validity metrics", report.metrics)}
+{_metric_table("Runtime and resource measurements", report.resources)}
 {repeatability}
 {_comparison_html(report.comparison)}
 {_regression_html(report.regression)}
 <section><h2>Provenance</h2><div class="table-wrap"><table><tbody>
 <tr><th>Protocol</th><td>{escape(report.protocol_id)}@{report.protocol_version}</td></tr>
 <tr><th>Protocol SHA-256</th><td class="mono">{escape(report.protocol_sha256)}</td></tr>
-<tr><th>Track / timing</th><td>{escape(report.track)} / {escape(report.timing_scope or 'unknown')}</td></tr>
-<tr><th>Method version / commit</th><td>{escape(report.method_version or 'unknown')} / <span class="mono">{escape(report.method_commit or 'unknown')}</span></td></tr>
-<tr><th>Dataset fingerprint</th><td>{escape(report.dataset_fingerprint_class)} / <span class="mono">{escape(report.dataset_content_sha256 or 'unknown')}</span></td></tr>
-<tr><th>Host control</th><td>{escape(report.host_control_mode or 'unknown')}</td></tr>
-<tr><th>Host SHA-256</th><td class="mono">{escape(report.host_sha256 or 'unknown')}</td></tr>
-<tr><th>CPU</th><td>{escape(report.cpu_model or 'unknown')}</td></tr>
+<tr><th>Track / timing</th><td>{escape(report.track)} / {escape(report.timing_scope or "unknown")}</td></tr>
+<tr><th>Method version / commit</th><td>{escape(report.method_version or "unknown")} / <span class="mono">{escape(report.method_commit or "unknown")}</span></td></tr>
+<tr><th>Dataset fingerprint</th><td>{escape(report.dataset_fingerprint_class)} / <span class="mono">{escape(report.dataset_content_sha256 or "unknown")}</span></td></tr>
+<tr><th>Host control</th><td>{escape(report.host_control_mode or "unknown")}</td></tr>
+<tr><th>Host SHA-256</th><td class="mono">{escape(report.host_sha256 or "unknown")}</td></tr>
+<tr><th>CPU</th><td>{escape(report.cpu_model or "unknown")}</td></tr>
 </tbody></table></div></section>
 <footer>Generated from verified immutable LidarPerf evidence. This file is self-contained and performs no network requests.</footer>
 </main></body></html>
