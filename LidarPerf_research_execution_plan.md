@@ -3602,3 +3602,65 @@ Step 14 is complete.
 - Temporary Step 14 workflows are removed; the permanent repository workflow set returns to the normal CI workflow only.
 
 The next planned engineering phase is **Phase 15 — Docker backend**, for external estimator execution where direct Python integration is unsuitable.
+
+
+---
+
+## Step 15 execution record — Docker backend — 16 September 2026
+
+Step 15 implements Phase 15's external-estimator Docker execution backend on branch `step15-docker-backend` / PR #17, based on main `ae69b5cd4b5e9e07991e1ac8f71d2a04cbc73fa0`.
+
+### Implemented semantics
+
+- `DockerBackend` uses the Docker CLI directly and never invokes an estimator command through a host shell.
+- `DockerRunSpec` declares image, command, entrypoint, bind mounts, CPU-core allocation, byte-exact memory limit, network mode, GPU access, environment, working directory and timeout.
+- requested images are inspected before execution and resolved to an immutable repository digest when available, with the content-addressed image ID retained and used as the fallback immutable identity;
+- the measured invocation uses the immutable image reference and `--pull never`, preventing a mutable tag from changing during the run;
+- bind mounts require absolute host sources and canonical absolute container targets; duplicate container targets are rejected;
+- CPU sets, memory limits, network and GPU access are explicit Docker arguments rather than implicit host state;
+- combined stdout/stderr is retained in one process log;
+- timeout handling force-removes the named container and records cleanup failure if cleanup itself fails;
+- Docker client/server versions and the complete declared execution semantics are available as versioned execution metadata for bundle provenance.
+
+### Measurement/accounting decision
+
+Docker v0.1 intentionally exposes only end-to-end wall time as a measured resource. It advertises `process_cpu_time=false`, `peak_memory=false` and `authoritative_process_accounting=false`.
+
+This is deliberate: the estimator processes belong to the Docker daemon/container runtime and are not descendants of the local `docker` CLI process. Wrapping only the CLI in BenchExec would measure the wrong process tree and create a false impression of authoritative CPU/RAM accounting. Container software reproducibility and trustworthy system-resource accounting are therefore kept as separate concerns. A later controlled-container accounting design must observe the actual container cgroup/workload before LidarPerf may make authoritative Docker CPU/memory claims.
+
+### Real integration evidence
+
+`scripts/run_step15_docker_validation.py` exercises the backend on an ordinary Ubuntu GitHub-hosted runner using `alpine:3.20`:
+
+- image is resolved to immutable registry digest `sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc`;
+- Docker client/server version observed: 28.0.4;
+- network mode: `none`;
+- CPU allocation: one explicit CPU from the runner affinity;
+- memory limit: 64 MiB (`67108864` bytes);
+- writable bind mount round-trip is verified;
+- combined container output contains `docker-backend-ok`;
+- return code is zero and the container is cleaned up;
+- evidence remains explicitly non-authoritative for performance because the host is ephemeral and Docker v0.1 does not provide authoritative container process CPU/RAM accounting.
+
+Durable evidence: `docs/validation/step15_docker_backend.json`.
+
+### Validation and tests
+
+After closing the memory-limit provenance gap, Ruff passes and the full suite contains **176 passing tests**. Docker-specific tests cover daemon capability semantics, immutable image resolution and image-ID fallback, malformed image provenance, exact command construction, CPU/memory/network/GPU/mount/environment provenance, successful execution/output capture, timeout cleanup and unsafe/ambiguous spec rejection.
+
+### Failures and learnings preserved
+
+1. Early Step 15 CI/formatter iterations (`35141129564`, `35141189675`, `35141256369`, `35141260868`, `35141351687`) failed before the stable backend/test tree was reached; formatter repair run `35141346675` succeeded and the owner-authored head later passed normal CI (`35141482591`). These were development/tooling failures, not successful benchmark evidence.
+2. The first real Docker validation run `35141496389` proved the host Docker daemon itself was healthy (`docker version` and image pull succeeded) but the backend capability probe rejected its own version-template output with `docker version did not report both client and server versions`. The probe was corrected to request explicit client/server fields; retry `35141669041` then passed the real Alpine execution and committed the first durable evidence.
+3. Post-implementation SPEC audit found a genuine normative omission: SPEC requires Docker/container execution to record the memory limit, but the initial `DockerRunSpec` did not expose one. Step 15 was not merged with that gap. `memory_limit_bytes` was added, validated as positive, mapped to Docker `--memory`, recorded in execution metadata and exercised at 64 MiB by the real validation.
+4. The first memory-gap closer `35143313051` was rejected by GitHub before any job due temporary workflow YAML. No product code changed.
+5. The repaired closer `35143422365` applied the product patch but failed because Ruff inspected the disposable patch helper itself and reported line-length errors. Permanent files had not been committed.
+6. Corrected closure run `35143594101` removed patch scaffolding before lint, passed Ruff, passed all **176 tests**, pulled and executed real Alpine with the 64 MiB memory cap, asserted the durable evidence, committed the permanent fix and self-deleted the temporary workflow/helper.
+
+### Security/provenance note
+
+Container commands and explicitly declared environment values are benchmark semantics and are recorded as provenance. They must not contain credentials or other secrets. Public-bundle sanitization is a separate release-hardening task already required by the specification.
+
+### Next
+
+After final PR-head and post-merge matrices, Step 16 moves to broader real-dataset / estimator validation before the GitHub Action layer, so the Docker abstraction is exercised by a real LO/LIO estimator rather than only the minimal Alpine integration fixture.

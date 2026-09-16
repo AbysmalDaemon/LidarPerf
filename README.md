@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, the regression decision engine, self-contained HTML/JSON reporting, and Bencher Metric Format export are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, the regression decision engine, self-contained HTML/JSON reporting, Bencher Metric Format export, and the first Docker CLI external-estimator backend are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -42,6 +42,7 @@ The package currently includes:
 - an accuracy-gated regression engine with explicit policy thresholds, paired blocked-run metadata checks, deterministic bootstrap uncertainty, and `PASS` / `FAIL_ACCURACY` / `FAIL_PERFORMANCE` / `FAIL_VALIDITY` / `INCONCLUSIVE` / `NOT_COMPARABLE` verdicts.
 - verified `lidarperf.report.v1` summaries and self-contained HTML/SVG reports covering accuracy, resources, repeatability, trajectory preview, provenance, scientific caveats, and optional comparison/regression context.
 - a verified Bencher Metric Format exporter with stable semantic benchmark identities and automatic alert suppression for evidence that is not authoritative enough for performance-regression claims.
+- a Docker CLI backend for opaque external estimators with immutable image provenance, explicit bind mounts, CPU/memory limits, network/GPU declarations, timeout cleanup, and end-to-end wall-time semantics.
 
 Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
 
@@ -63,6 +64,8 @@ only; its 5% performance and 2% accuracy limits are not package defaults.
 Step 13 implements `lidarperf report`. Reports verify the source `.lperf` bundle before rendering, emit a versioned `lidarperf.report.v1` JSON summary, and can produce a single self-contained HTML file using inline CSS/SVG only. The report preserves measurement class and performance-authority semantics instead of upgrading evidence through presentation. Optional Step 11 comparison and Step 12 regression JSON can be attached when they reference the reported result. The durable real report is `docs/validation/step13_kiss_hilti_report.html` with its machine-readable companion `step13_kiss_hilti_report.json`.
 
 Step 14 implements `lidarperf export bencher`. The command verifies the source bundle through the reporting path and emits pure Bencher Metric Format JSON so the result can be consumed by Bencher without a LidarPerf-specific wrapper. Exported values are conservative medians from an explicit allowlist; LidarPerf does not fabricate Bencher lower/upper bounds from run-set spread. Dataset/protocol fingerprints and measurement class are part of the stable benchmark identity. Exploratory, non-conformant, partially failed, or otherwise non-authoritative evidence receives Bencher's `-bencher-ignore` suffix automatically, so it may be stored for history without creating performance alerts. The durable hosted example is `docs/validation/step14_kiss_hilti_bencher.json`.
+
+Step 15 adds the first Docker execution backend for estimators that are unsuitable for direct Python/evalio integration. A run resolves the requested image to an immutable repository digest (or content-addressed image ID fallback) and records Docker client/server versions, entrypoint/command, bind mounts, CPU allocation, memory limit, network mode, GPU access, working directory and declared environment. The backend executes the immutable image with `--pull never`, captures combined output, enforces timeouts with explicit cleanup, and measures end-to-end wall time. It deliberately reports `authoritative_process_accounting=false`: Docker daemon workloads are not descendants of the local CLI process, so wrapping only `docker run` in BenchExec would not honestly measure container CPU time or peak memory. The durable Alpine integration record is `docs/validation/step15_docker_backend.json`.
 
 ## Validation snapshot
 
@@ -166,7 +169,15 @@ The backend executes argument vectors directly without a shell and can delegate 
 
 `BenchExecBackend.probe_capability()` performs an actual tiny `runexec` execution instead of treating “binary exists” as proof of benchmark readiness. A host is controlled-ready only if process-tree timing and memory accounting succeed. Ordinary GitHub-hosted jobs do not start with the cgroup delegation BenchExec needs; the Step 9 validation workflow proved that a deliberately delegated transient systemd scope can supply working accounting there. Hosted-runner measurements are still marked non-authoritative because accounting capability does not make ephemeral cloud hardware a stable performance baseline.
 
-BenchExec writes command stdout and stderr into one output file; LidarPerf therefore names this artifact a **combined output log** at the backend layer rather than pretending the streams were measured separately. Result bundles accept either one `process.log` or a genuine `stdout.log` + `stderr.log` pair, never both. The backend disables BenchExec namespace/container mode by default so estimator output paths retain ordinary host filesystem semantics; software containerization remains a separate planned Docker backend.
+BenchExec writes command stdout and stderr into one output file; LidarPerf therefore names this artifact a **combined output log** at the backend layer rather than pretending the streams were measured separately. Result bundles accept either one `process.log` or a genuine `stdout.log` + `stderr.log` pair, never both. The backend disables BenchExec namespace/container mode by default so estimator output paths retain ordinary host filesystem semantics; software containerization is handled separately by the Docker backend described below.
+
+### Docker backend
+
+`DockerBackend` is intended for opaque external estimators whose software environment is best represented by a container image. It uses Docker's CLI without invoking a shell, resolves the image to immutable content before execution, disables implicit pulls during the measured run, and records the execution semantics required by `SPEC.md`. Bind-mount sources must be absolute host paths; container targets must be canonical absolute POSIX paths. CPU sets, byte-exact memory limits, network mode and GPU access are explicit rather than inherited silently.
+
+Docker v0.1 is an **execution/provenance backend, not an authoritative CPU/RAM measurement backend**. It measures end-to-end elapsed wall time with a monotonic clock, while `process_cpu_time`, `peak_memory` and `authoritative_process_accounting` remain false. The Docker daemon owns the actual container processes, so timing/accounting the local Docker client process would be scientifically misleading. Controlled container performance claims therefore need a future accounting path that observes the container workload itself.
+
+The declared container command and environment are benchmark provenance and may be recorded verbatim. Benchmark definitions should therefore not place credentials or other secrets in command arguments or environment values. A separate public-bundle sanitization step remains planned before release.
 
 For example, to exercise point-time semantics and deskew-related tests:
 
