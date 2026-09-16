@@ -54,4 +54,4 @@ docker pull alpine:3.20
 python scripts/run_step15_docker_validation.py
 ```
 
-The committed validation uses `--network none`, an explicit CPU allocation and a 64 MiB memory limit. The image is executed by immutable repository digest with `--pull never`; the JSON records both requested and immutable image identities plus Docker client/server versions.
+The committed validation uses `--network none`, an explicit CPU allocation and a 64 MiB memory limit. The image is executed by immutable repository digest with `--pull never`; the JSON records both requested and immutable image identities plus Docker client/server versions. The 64 MiB cap is a fixture constraint chosen to prove memory-limit declaration and provenance, not a recommended estimator memory budget.
