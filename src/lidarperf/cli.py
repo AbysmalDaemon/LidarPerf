@@ -13,6 +13,13 @@ from ._version import __version__
 from .bundle import VerificationStatus, verify_bundle
 from .comparison import ComparisonError, ScalarChange, compare_bundles
 from .host import DoctorSeverity, assess_host, probe_host
+from .regression import (
+    RegressionError,
+    RegressionPolicy,
+    RegressionVerdict,
+    load_regression_policy,
+    regress_bundles,
+)
 from .spec import ProtocolLoadError, load_protocol
 from .synthetic import SyntheticFixtureConfig, write_fixture
 
@@ -40,6 +47,17 @@ def _format_change(name: str, change: ScalarChange) -> str:
         f"  {name}: {change.baseline:.9g} -> {change.candidate:.9g} "
         f"(delta={change.absolute:+.9g}, {relative})"
     )
+
+
+def _finish_regression(verdict: RegressionVerdict) -> None:
+    if verdict in {
+        RegressionVerdict.FAIL_ACCURACY,
+        RegressionVerdict.FAIL_PERFORMANCE,
+        RegressionVerdict.FAIL_VALIDITY,
+    }:
+        raise typer.Exit(code=1)
+    if verdict in {RegressionVerdict.INCONCLUSIVE, RegressionVerdict.NOT_COMPARABLE}:
+        raise typer.Exit(code=3)
 
 
 @app.callback(invoke_without_command=True)
@@ -197,6 +215,94 @@ def compare_results(
         typer.echo(
             "NO STRICT PERFORMANCE RANKING: performance evidence is not strictly comparable."
         )
+
+
+@app.command("regress")
+def regress_results(
+    baseline: Path,
+    candidate: Path,
+    policy_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            help=(
+                "YAML/JSON lidarperf.regression-policy.v1 file. Without one, LidarPerf "
+                "does not invent thresholds and returns INCONCLUSIVE once evidence is comparable."
+            ),
+        ),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Emit the regression report as JSON."),
+    ] = False,
+    declare_change: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--declare-change",
+            help="Declare config, build_environment, or dependencies as an intentional change.",
+        ),
+    ] = None,
+) -> None:
+    """Make an accuracy-gated paired performance-regression decision."""
+
+    try:
+        policy = load_regression_policy(policy_path) if policy_path is not None else RegressionPolicy()
+        report = regress_bundles(
+            baseline,
+            candidate,
+            policy=policy,
+            declared_differences=set(declare_change or ()),
+        )
+    except (RegressionError, OSError, ValueError) as exc:
+        typer.echo(f"INVALID REGRESSION: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    if json_output:
+        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+        _finish_regression(report.verdict)
+        return
+
+    typer.echo("LidarPerf regression")
+    typer.echo(f"verdict:   {report.verdict.value}")
+    typer.echo(f"baseline:  {report.baseline_result_id}")
+    typer.echo(f"candidate: {report.candidate_result_id}")
+
+    if report.validity_issues:
+        typer.echo("validity issues:")
+        for issue in report.validity_issues:
+            typer.echo(f"  ✗ {issue}")
+
+    if report.comparability_issues:
+        typer.echo("comparability issues:")
+        for issue in report.comparability_issues:
+            typer.echo(f"  ✗ {issue}")
+
+    if report.accuracy_gates:
+        typer.echo("accuracy gates:")
+        for gate in report.accuracy_gates:
+            marker = "✓" if gate.passed is True else "✗" if gate.passed is False else "?"
+            typer.echo(f"  {marker} {gate.metric}: {gate.reason}")
+
+    if report.performance is not None:
+        perf = report.performance
+        confidence = 100.0 * perf.confidence_level
+        typer.echo("paired performance:")
+        typer.echo(f"  metric: {perf.metric}")
+        typer.echo(f"  valid pairs: {perf.valid_pairs}")
+        typer.echo(f"  median normalized regression: {perf.median_regression_percent:+.3f}%")
+        typer.echo(
+            f"  {confidence:.1f}% bootstrap CI: "
+            f"[{perf.confidence_interval_low_percent:+.3f}%, "
+            f"{perf.confidence_interval_high_percent:+.3f}%]"
+        )
+        typer.echo(f"  practical threshold: +{perf.practical_threshold_percent:.3f}%")
+
+    if report.warnings:
+        typer.echo("warnings:")
+        for warning in report.warnings:
+            typer.echo(f"  ⚠ {warning}")
+
+    _finish_regression(report.verdict)
 
 
 @protocol_app.command("validate")
