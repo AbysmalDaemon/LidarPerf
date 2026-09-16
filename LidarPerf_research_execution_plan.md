@@ -3353,3 +3353,79 @@ A documentation mini-step after Step 11 added a README-facing visual summary of 
 - The first history-closure workflow attempt used an unsafe heredoc/YAML layout: its workspace append step ran, but the intended commit step was not parsed/executed. No project file was changed by that failed closure attempt; this replacement workflow fixes the tooling mistake and removes itself.
 
 This visual is presentation derived from existing durable evidence, not a new benchmark result.
+
+
+---
+
+## Step 12 — regression decision engine — 16 September 2026
+
+Step 12 implements the v0.1 regression-decision layer on top of Step 11 semantic
+comparability rather than duplicating or weakening comparison rules.
+
+### Implemented semantics
+
+- Added `lidarperf regress BASELINE CANDIDATE` and versioned `lidarperf.regression.v1`
+  reports.
+- Normative verdicts are `PASS`, `FAIL_ACCURACY`, `FAIL_PERFORMANCE`, `FAIL_VALIDITY`,
+  `INCONCLUSIVE`, and `NOT_COMPARABLE`.
+- Both bundles are independently verified and Step 11 comparability is evaluated before
+  regression gates.
+- Strict paired regression additionally requires equal measured-pair counts, the same
+  non-empty `pairing_id`, `paired_execution=true`, the same recorded integer `pairing_seed`,
+  and the same one-entry-per-pair `AB`/`BA` order metadata.
+- Accuracy gates execute before performance. Implemented gate primitives are `absolute_max`,
+  `relative_max_regression`, and `non_inferiority_margin`; multiple configured gates are
+  all-of, providing the v0.1 `multi_metric_all` behavior.
+- Performance policy records metric direction, explicit practical regression threshold,
+  confidence level, bootstrap sample count/seed, and minimum valid pair count.
+- The paired effect is normalized so positive percentages always mean worse performance,
+  independent of metric direction.
+- The primary performance statistic is the median paired normalized regression. A
+  deterministic percentile bootstrap estimates its confidence interval.
+- `FAIL_PERFORMANCE` requires the entire confidence interval to be worse than the practical
+  threshold; `PASS` requires the entire interval to remain at or below the threshold;
+  overlap produces `INCONCLUSIVE`.
+- No explicit accuracy gate means `INCONCLUSIVE`. No explicit practical performance
+  threshold means `INCONCLUSIVE`. LidarPerf does not invent a hidden 5% rule.
+- CLI exit codes are 0 for `PASS`, 1 for substantive `FAIL_*`, 2 for invalid
+  invocation/evidence, and 3 for `INCONCLUSIVE` or `NOT_COMPARABLE`.
+- Added `docs/examples/regression_policy.example.yaml`; its 5% performance and 2% accuracy
+  values are examples only, not defaults.
+
+### Validation
+
+- The real committed Step 9→Step 10 GitHub-hosted evidence is intentionally rejected as
+  `NOT_COMPARABLE` for strict regression, proving that Step 12 does not bypass Step 11
+  host/control safeguards.
+- Durable `docs/validation/step12_regression_engine.json` also contains clearly labeled
+  synthetic decision-engine fixtures derived from the existing Step 10 payload. These
+  fixtures demonstrate `PASS`, `FAIL_PERFORMANCE`, `FAIL_ACCURACY` even when the candidate is
+  faster, and threshold-crossing `INCONCLUSIVE`. They are not new controlled benchmark runs
+  or KISS-ICP performance claims.
+- The accuracy-regression fixture deliberately makes the candidate 50% faster while
+  worsening translation APE by 10%; the engine returns `FAIL_ACCURACY` and does not evaluate
+  a performance win, preserving the accuracy-before-speed invariant.
+
+### Failures and fixes preserved
+
+- Initial Step 12 CI stopped at seven Ruff findings before behavioral tests: one CLI long
+  line, one modern-annotation fix, and several long regression-engine diagnostic lines.
+- The first temporary formatter workflow used `ruff check --fix` before `ruff format`;
+  because Ruff returned nonzero on E501, shell `-e` prevented the formatter and all tests
+  from running. No product commit was produced.
+- The second formatter attempt corrected the step order, reformatted two files, and
+  auto-fixed one issue, but two E501 diagnostic strings remained because Ruff formatting
+  intentionally did not split them. Again, no product commit was produced.
+- The third formatter gate explicitly split those two diagnostics, then Ruff passed and the
+  complete behavioral suite reached 149 passing tests. The temporary formatter workflow
+  self-deleted in bot commit `73aad28`.
+- Two CLI regression tests were then added to lock the `NOT_COMPARABLE` human/JSON behavior
+  and exit code 3 for the real hosted Step 9→Step 10 evidence, bringing the final Step 12
+  suite to 151 tests before merge.
+- The first Step 12 closure workflow stopped before evidence generation because the durable
+  validation script contained one 111-character evidence-label line. The line was split;
+  no evidence or documentation from that failed closure run was committed.
+
+Step 12 exit condition: regression verdict semantics, explicit gate policy, paired
+uncertainty handling, CLI, durable guardrail/decision evidence, documentation, full
+supported-Python CI, merge, and post-merge CI must all be complete before the step is closed.

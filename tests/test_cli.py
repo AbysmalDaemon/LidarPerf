@@ -69,6 +69,39 @@ def test_compare_json_output() -> None:
     assert '"performance_comparable": false' in result.stdout
 
 
+def test_regress_real_hosted_evidence_is_not_comparable() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "regress",
+            "docs/validation/step9_kiss_hilti.lperf",
+            "docs/validation/step10_kiss_hilti_repeated.lperf",
+            "--policy",
+            "docs/examples/regression_policy.example.yaml",
+        ],
+    )
+    assert result.exit_code == 3
+    assert "verdict:   NOT_COMPARABLE" in result.stdout
+    assert "Step 11 performance comparability failed" in result.stdout
+
+
+def test_regress_json_preserves_noncomparable_exit_code() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "regress",
+            "docs/validation/step9_kiss_hilti.lperf",
+            "docs/validation/step10_kiss_hilti_repeated.lperf",
+            "--policy",
+            "docs/examples/regression_policy.example.yaml",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 3
+    assert '"schema_version": "lidarperf.regression.v1"' in result.stdout
+    assert '"verdict": "NOT_COMPARABLE"' in result.stdout
+
+
 def test_synthetic_generate(tmp_path) -> None:
     output = tmp_path / "synthetic"
     result = runner.invoke(

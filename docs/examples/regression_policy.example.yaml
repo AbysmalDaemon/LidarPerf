@@ -1,0 +1,23 @@
+# Example only: thresholds are experiment policy, not LidarPerf defaults.
+schema_version: lidarperf.regression-policy.v1
+
+performance:
+  metric: wall_time_s
+  direction: lower_is_better
+  max_regression_percent: 5.0
+  confidence_level: 0.95
+  bootstrap_samples: 10000
+  bootstrap_seed: 20260916
+  min_valid_pairs: 5
+
+accuracy_gates:
+  - type: relative_max_regression
+    metric: ape.translation.rmse_m
+    direction: lower_is_better
+    max_regression_percent: 2.0
+  - type: relative_max_regression
+    metric: ape.rotation.rmse_deg
+    direction: lower_is_better
+    max_regression_percent: 2.0
+
+require_all_trials_successful: true

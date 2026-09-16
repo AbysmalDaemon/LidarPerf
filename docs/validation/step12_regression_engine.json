@@ -1,0 +1,197 @@
+{
+  "assertions": {
+    "accuracy_precedes_speed": true,
+    "hosted_evidence_refused": true,
+    "inconclusive_uncertainty_path_demonstrated": true,
+    "pass_path_demonstrated": true,
+    "performance_failure_path_demonstrated": true
+  },
+  "evidence_kind": "decision-engine validation; synthetic controlled scenarios are not benchmark claims",
+  "policy": {
+    "accuracy_gates": [
+      {
+        "direction": "lower_is_better",
+        "limit": null,
+        "margin": null,
+        "max_regression_percent": 2.0,
+        "metric": "ape.translation.rmse_m",
+        "type": "relative_max_regression"
+      },
+      {
+        "direction": "lower_is_better",
+        "limit": null,
+        "margin": null,
+        "max_regression_percent": 2.0,
+        "metric": "ape.rotation.rmse_deg",
+        "type": "relative_max_regression"
+      }
+    ],
+    "performance": {
+      "bootstrap_samples": 10000,
+      "bootstrap_seed": 20260916,
+      "confidence_level": 0.95,
+      "direction": "lower_is_better",
+      "max_regression_percent": 5.0,
+      "metric": "wall_time_s",
+      "min_valid_pairs": 5
+    },
+    "require_all_trials_successful": true,
+    "schema_version": "lidarperf.regression-policy.v1"
+  },
+  "real_hosted_guardrail": {
+    "accuracy_comparable": true,
+    "accuracy_gates": [],
+    "comparability_issues": [
+      "Step 11 performance comparability failed",
+      "Step 11 regression comparability failed",
+      "paired regression requires the same non-empty pairing_id",
+      "both bundles must declare paired_execution=true",
+      "paired blocked randomization requires the same recorded integer pairing_seed",
+      "paired regression requires equal baseline/candidate measured-trial counts",
+      "both bundles must record the same pair_order metadata"
+    ],
+    "performance": null,
+    "performance_comparable": false,
+    "regression_comparable": false,
+    "verdict": "NOT_COMPARABLE",
+    "warnings": []
+  },
+  "schema_version": "lidarperf.step12-validation.v1",
+  "source_evidence": {
+    "real_hosted_baseline": "docs/validation/step9_kiss_hilti.lperf",
+    "real_hosted_candidate": "docs/validation/step10_kiss_hilti_repeated.lperf",
+    "synthetic_scenarios_derived_from": "docs/validation/step10_kiss_hilti_repeated.lperf"
+  },
+  "synthetic_decision_scenarios": {
+    "accuracy_regression_even_when_faster": {
+      "accuracy_comparable": true,
+      "accuracy_gates": [
+        {
+          "metric": "ape.translation.rmse_m",
+          "observed_regression_percent": 10.00000000000001,
+          "passed": false,
+          "threshold": 2.0
+        },
+        {
+          "metric": "ape.rotation.rmse_deg",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        }
+      ],
+      "comparability_issues": [],
+      "performance": null,
+      "performance_comparable": true,
+      "regression_comparable": true,
+      "verdict": "FAIL_ACCURACY",
+      "warnings": []
+    },
+    "pass": {
+      "accuracy_comparable": true,
+      "accuracy_gates": [
+        {
+          "metric": "ape.translation.rmse_m",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        },
+        {
+          "metric": "ape.rotation.rmse_deg",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        }
+      ],
+      "comparability_issues": [],
+      "performance": {
+        "bootstrap_samples": 10000,
+        "bootstrap_seed": 20260916,
+        "confidence_interval_percent": [
+          0.0,
+          0.0
+        ],
+        "confidence_level": 0.95,
+        "median_regression_percent": 0.0,
+        "metric": "wall_time_s",
+        "practical_threshold_percent": 5.0,
+        "valid_pairs": 5
+      },
+      "performance_comparable": true,
+      "regression_comparable": true,
+      "verdict": "PASS",
+      "warnings": []
+    },
+    "performance_regression": {
+      "accuracy_comparable": true,
+      "accuracy_gates": [
+        {
+          "metric": "ape.translation.rmse_m",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        },
+        {
+          "metric": "ape.rotation.rmse_deg",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        }
+      ],
+      "comparability_issues": [],
+      "performance": {
+        "bootstrap_samples": 10000,
+        "bootstrap_seed": 20260916,
+        "confidence_interval_percent": [
+          10.000000000000004,
+          10.000000000000012
+        ],
+        "confidence_level": 0.95,
+        "median_regression_percent": 10.00000000000001,
+        "metric": "wall_time_s",
+        "practical_threshold_percent": 5.0,
+        "valid_pairs": 5
+      },
+      "performance_comparable": true,
+      "regression_comparable": true,
+      "verdict": "FAIL_PERFORMANCE",
+      "warnings": []
+    },
+    "uncertainty_crosses_threshold": {
+      "accuracy_comparable": true,
+      "accuracy_gates": [
+        {
+          "metric": "ape.translation.rmse_m",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        },
+        {
+          "metric": "ape.rotation.rmse_deg",
+          "observed_regression_percent": 0.0,
+          "passed": true,
+          "threshold": 2.0
+        }
+      ],
+      "comparability_issues": [],
+      "performance": {
+        "bootstrap_samples": 10000,
+        "bootstrap_seed": 20260916,
+        "confidence_interval_percent": [
+          0.0,
+          10.000000000000012
+        ],
+        "confidence_level": 0.95,
+        "median_regression_percent": 5.000000000000005,
+        "metric": "wall_time_s",
+        "practical_threshold_percent": 5.0,
+        "valid_pairs": 5
+      },
+      "performance_comparable": true,
+      "regression_comparable": true,
+      "verdict": "INCONCLUSIVE",
+      "warnings": [
+        "paired confidence interval crosses the practical regression threshold"
+      ]
+    }
+  }
+}
