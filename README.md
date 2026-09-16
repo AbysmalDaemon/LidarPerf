@@ -2,7 +2,7 @@
 
 **Conformance-aware performance regression testing for LiDAR odometry.**
 
-> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, the regression decision engine, and self-contained HTML/JSON reporting are implemented.
+> **Status:** pre-alpha. The benchmark specification is approved; protocol, synthetic-fixture, result-bundle integrity, host-provenance, controlled process-execution, trajectory-evaluation, real evalio/KISS-ICP integration, complete `.lperf` artifact production, repeated-run/repeatability analysis, semantic result comparison, the regression decision engine, self-contained HTML/JSON reporting, and Bencher Metric Format export are implemented.
 
 LidarPerf is being built to answer a stricter question than “which odometry method is fastest?”:
 
@@ -41,6 +41,7 @@ The package currently includes:
 - a semantic comparator that independently verifies both bundles, evaluates accuracy/performance/regression comparability separately, enumerates evidence differences, and refuses strict performance ranking when required semantics are missing or incompatible.
 - an accuracy-gated regression engine with explicit policy thresholds, paired blocked-run metadata checks, deterministic bootstrap uncertainty, and `PASS` / `FAIL_ACCURACY` / `FAIL_PERFORMANCE` / `FAIL_VALIDITY` / `INCONCLUSIVE` / `NOT_COMPARABLE` verdicts.
 - verified `lidarperf.report.v1` summaries and self-contained HTML/SVG reports covering accuracy, resources, repeatability, trajectory preview, provenance, scientific caveats, and optional comparison/regression context.
+- a verified Bencher Metric Format exporter with stable semantic benchmark identities and automatic alert suppression for evidence that is not authoritative enough for performance-regression claims.
 
 Step 8 established the real estimator/data integration path. Step 9 now proves the first complete artifact path: evalio 0.6.1 → KISS-ICP 1.3.0 → 120 Hilti LiDAR scans → BenchExec `runexec 3.35` → LidarPerf trajectory/accuracy evaluation → checksummed `.lperf` bundle → `lidarperf verify: VALID`. The durable bundle is in `docs/validation/step9_kiss_hilti.lperf/`.
 
@@ -61,6 +62,8 @@ only; its 5% performance and 2% accuracy limits are not package defaults.
 
 Step 13 implements `lidarperf report`. Reports verify the source `.lperf` bundle before rendering, emit a versioned `lidarperf.report.v1` JSON summary, and can produce a single self-contained HTML file using inline CSS/SVG only. The report preserves measurement class and performance-authority semantics instead of upgrading evidence through presentation. Optional Step 11 comparison and Step 12 regression JSON can be attached when they reference the reported result. The durable real report is `docs/validation/step13_kiss_hilti_report.html` with its machine-readable companion `step13_kiss_hilti_report.json`.
 
+Step 14 implements `lidarperf export bencher`. The command verifies the source bundle through the reporting path and emits pure Bencher Metric Format JSON so the result can be consumed by Bencher without a LidarPerf-specific wrapper. Exported values are conservative medians from an explicit allowlist; LidarPerf does not fabricate Bencher lower/upper bounds from run-set spread. Dataset/protocol fingerprints and measurement class are part of the stable benchmark identity. Exploratory, non-conformant, partially failed, or otherwise non-authoritative evidence receives Bencher's `-bencher-ignore` suffix automatically, so it may be stored for history without creating performance alerts. The durable hosted example is `docs/validation/step14_kiss_hilti_bencher.json`.
+
 ## Validation snapshot
 
 The current real-evidence path uses KISS-ICP on the Hilti 2022 `basement_2` sequence. The visual below summarizes the committed Step 9–11 artifacts rather than presenting a publication-grade estimator ranking.
@@ -80,6 +83,7 @@ lidarperf verify result.lperf
 lidarperf compare baseline.lperf candidate.lperf
 lidarperf regress baseline.lperf candidate.lperf --policy policy.yaml
 lidarperf report result.lperf --html report.html --json report.json
+lidarperf export bencher result.lperf
 ```
 
 Available now:
@@ -96,6 +100,7 @@ lidarperf verify ./result.lperf
 lidarperf compare baseline.lperf candidate.lperf
 lidarperf regress baseline.lperf candidate.lperf --policy docs/examples/regression_policy.example.yaml
 lidarperf report result.lperf --html report.html --json report.json
+lidarperf export bencher result.lperf
 ```
 
 `doctor` performs a read-only host probe and reports benchmark-relevant operating-system, CPU/topology, affinity, governor, memory/swap, cgroup, storage, NVIDIA/CUDA, system-load, power, and BenchExec capability metadata. It does not silently tune or modify the machine. `--json` emits the complete versioned `lidarperf.doctor.v1` report. Passing `--data-path` also classifies the dataset filesystem and warns about network storage.
@@ -120,6 +125,15 @@ produce `INCONCLUSIVE`; incompatible evidence produces `NOT_COMPARABLE`. LidarPe
 silently invent a universal performance or accuracy threshold.
 
 `report` first verifies the immutable source bundle, then builds a versioned `lidarperf.report.v1` summary. `--html` writes a portable, self-contained report with inline SVG trajectory/distribution graphics and no CDN, JavaScript, external fonts, or network requests; `--json` writes the same report semantics for downstream tools. The renderer surfaces verification warnings, failed trials, measurement class, host control, and `performance_authoritative` status prominently. `--comparison` and `--regression` may attach existing versioned decision reports, but presentation never changes their conclusions or the strength of the underlying evidence.
+
+`export bencher` emits [Bencher Metric Format](https://bencher.dev/docs/reference/bencher-metric-format/) JSON on stdout, with diagnostics kept on stderr so command capture remains machine-readable. The benchmark name includes method/track, dataset identity, exact dataset/protocol fingerprint prefixes, protocol version, and LidarPerf measurement class; result IDs, host identifiers, local paths, logs, and command lines are intentionally excluded. Repeated metrics use medians. Non-authoritative evidence is automatically named with Bencher's `-bencher-ignore` suffix, which stores the metrics while suppressing alerts. This is an interoperability export, not a replacement for LidarPerf comparability/regression decisions or a full public-bundle sanitizer.
+
+A Bencher CI job can consume it directly:
+
+```bash
+bencher run --adapter json \
+  "lidarperf export bencher docs/validation/step10_kiss_hilti_repeated.lperf"
+```
 
 ### evalio backend
 

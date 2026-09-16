@@ -12,6 +12,7 @@ import typer
 from ._version import __version__
 from .bundle import VerificationStatus, verify_bundle
 from .comparison import ComparisonError, ScalarChange, compare_bundles
+from .export_cli import export_bencher_results
 from .host import DoctorSeverity, assess_host, probe_host
 from .regression import (
     RegressionError,
@@ -32,9 +33,12 @@ app = typer.Typer(
 )
 protocol_app = typer.Typer(help="Validate and inspect benchmark protocol documents.")
 synthetic_app = typer.Typer(help="Generate deterministic synthetic conformance fixtures.")
+export_app = typer.Typer(help="Export verified results to external benchmark formats.")
 app.add_typer(protocol_app, name="protocol")
 app.add_typer(synthetic_app, name="synthetic")
+app.add_typer(export_app, name="export")
 app.command("report")(report_results)
+export_app.command("bencher")(export_bencher_results)
 
 
 def _version_callback(value: bool) -> None:
