@@ -75,8 +75,7 @@ lidarperf doctor
 lidarperf run ...
 lidarperf verify result.lperf
 lidarperf compare baseline.lperf candidate.lperf
-lidarperf regress baseline.lperf candidate.lperf --policy docs/examples/regression_policy.example.yaml
-lidarperf regress baseline.lperf candidate.lperf
+lidarperf regress baseline.lperf candidate.lperf --policy policy.yaml
 ```
 
 Available now:
@@ -91,6 +90,7 @@ lidarperf protocol validate protocols/lio/se3_v1.yaml
 lidarperf synthetic generate ./synthetic-fixture --poses 240
 lidarperf verify ./result.lperf
 lidarperf compare baseline.lperf candidate.lperf
+lidarperf regress baseline.lperf candidate.lperf --policy docs/examples/regression_policy.example.yaml
 ```
 
 `doctor` performs a read-only host probe and reports benchmark-relevant operating-system, CPU/topology, affinity, governor, memory/swap, cgroup, storage, NVIDIA/CUDA, system-load, power, and BenchExec capability metadata. It does not silently tune or modify the machine. `--json` emits the complete versioned `lidarperf.doctor.v1` report. Passing `--data-path` also classifies the dataset filesystem and warns about network storage.
