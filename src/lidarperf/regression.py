@@ -59,7 +59,7 @@ class AccuracyGate(BaseModel):
     margin: float | None = Field(default=None, ge=0.0)
 
     @model_validator(mode="after")
-    def validate_gate_parameters(self) -> "AccuracyGate":
+    def validate_gate_parameters(self) -> AccuracyGate:
         supplied = {
             "limit": self.limit is not None,
             "max_regression_percent": self.max_regression_percent is not None,
@@ -74,9 +74,7 @@ class AccuracyGate(BaseModel):
             raise ValueError(f"accuracy gate type {self.type!r} requires {expected}")
         extras = [name for name, present in supplied.items() if present and name != expected]
         if extras:
-            raise ValueError(
-                f"accuracy gate type {self.type!r} does not use: {', '.join(extras)}"
-            )
+            raise ValueError(f"accuracy gate type {self.type!r} does not use: {', '.join(extras)}")
         if self.type == "absolute_max" and self.direction != MetricDirection.LOWER_IS_BETTER:
             raise ValueError("absolute_max currently supports lower_is_better metrics only")
         return self
@@ -227,7 +225,8 @@ def _execution_validity_issues(
                 issues.append(f"{label} trial {trial.trial_index} timed out")
             if trial.status == TrialStatus.SUCCESS and trial.exit_code != 0:
                 issues.append(
-                    f"{label} trial {trial.trial_index} is marked successful with exit_code={trial.exit_code}"
+                    f"{label} trial {trial.trial_index} is marked successful "
+                    f"with exit_code={trial.exit_code}"
                 )
     return tuple(issues)
 
@@ -243,13 +242,18 @@ def _pairing_issues(
     pairing_id = baseline_exec.get("pairing_id")
     if not pairing_id or pairing_id != candidate_exec.get("pairing_id"):
         issues.append("paired regression requires the same non-empty pairing_id")
-    if baseline_exec.get("paired_execution") is not True or candidate_exec.get("paired_execution") is not True:
+    if (
+        baseline_exec.get("paired_execution") is not True
+        or candidate_exec.get("paired_execution") is not True
+    ):
         issues.append("both bundles must declare paired_execution=true")
 
     baseline_seed = baseline_exec.get("pairing_seed")
     candidate_seed = candidate_exec.get("pairing_seed")
     if not isinstance(baseline_seed, int) or baseline_seed != candidate_seed:
-        issues.append("paired blocked randomization requires the same recorded integer pairing_seed")
+        issues.append(
+            "paired blocked randomization requires the same recorded integer pairing_seed"
+        )
 
     baseline_order = baseline_exec.get("pair_order")
     candidate_order = candidate_exec.get("pair_order")
@@ -258,7 +262,9 @@ def _pairing_issues(
         issues.append("paired regression requires equal baseline/candidate measured-trial counts")
     if not isinstance(baseline_order, list) or baseline_order != candidate_order:
         issues.append("both bundles must record the same pair_order metadata")
-    elif len(baseline_order) != expected_count or any(order not in {"AB", "BA"} for order in baseline_order):
+    elif len(baseline_order) != expected_count or any(
+        order not in {"AB", "BA"} for order in baseline_order
+    ):
         issues.append("pair_order must contain one AB/BA entry per measured pair")
 
     return tuple(issues)
@@ -303,7 +309,8 @@ def _evaluate_accuracy_gate(
             candidate=candidate,
             threshold=gate.limit,
             reason=(
-                f"candidate {candidate:.9g} {'<=' if passed else '>'} absolute maximum {gate.limit:.9g}"
+                f"candidate {candidate:.9g} {'<=' if passed else '>'} "
+                f"absolute maximum {gate.limit:.9g}"
             ),
         )
 
@@ -557,9 +564,7 @@ def regress_bundles(
 
     warnings: tuple[str, ...] = ()
     if verdict == RegressionVerdict.INCONCLUSIVE:
-        warnings = (
-            "paired confidence interval crosses the practical regression threshold",
-        )
+        warnings = ("paired confidence interval crosses the practical regression threshold",)
 
     return RegressionReport(
         verdict=verdict,

@@ -246,7 +246,9 @@ def regress_results(
     """Make an accuracy-gated paired performance-regression decision."""
 
     try:
-        policy = load_regression_policy(policy_path) if policy_path is not None else RegressionPolicy()
+        policy = (
+            load_regression_policy(policy_path) if policy_path is not None else RegressionPolicy()
+        )
         report = regress_bundles(
             baseline,
             candidate,
