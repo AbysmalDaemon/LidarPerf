@@ -1,4 +1,4 @@
-"""Run KISS-ICP in Docker on evalio-normalized real Hilti LiDAR scans."""
+"""Run KISS-ICP in Docker on the PRBonn KITTI sequence-00 mini fixture."""
 
 from __future__ import annotations
 
@@ -9,20 +9,21 @@ import os
 import shutil
 from pathlib import Path
 
-import numpy as np
 import yaml
 
 from lidarperf.backends import DockerBackend, DockerMount, DockerRunSpec
-from lidarperf.backends.evalio import expected_evalio_result_paths, load_evalio_trajectory
 from lidarperf.spec.models import BenchmarkProtocol
 from lidarperf.trajectory import EvaluationSupport, evaluate_trajectory, load_tum
 
-SCHEMA = "lidarperf.step16-docker-kiss-validation.v1"
-INPUT_SCHEMA = "lidarperf.step16-input.v1"
+SCHEMA = "lidarperf.step16-docker-kiss-kitti-validation.v1"
+INPUT_SCHEMA = "lidarperf.step16-kitti-input.v1"
+SOURCE_URL = "https://uni-bonn.sciebo.de/s/KwOuBiPZi8vSz2O/download"
+SOURCE_REPOSITORY = "https://github.com/PRBonn/SHINE_mapping"
+SOURCE_REPOSITORY_COMMIT = "0fbaf8a2a8ebd64d9819c81f823fe0ecc5d344bb"
 
 KISS_CONFIG = {
     "out_dir": "/output/kiss",
-    "data": {"max_range": 120.0, "min_range": 0.5, "deskew": False},
+    "data": {"max_range": 100.0, "min_range": 0.0, "deskew": False},
     "mapping": {"voxel_size": 1.0, "max_points_per_voxel": 20},
     "registration": {
         "max_num_iterations": 500,
@@ -41,79 +42,89 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validation_protocol(root: Path) -> BenchmarkProtocol:
-    data = yaml.safe_load((root / "protocols/lo/se3_v1.yaml").read_text(encoding="utf-8"))
-    data["trajectory"]["association"] = {
-        "mode": "nearest",
-        "max_time_delta_ns": 10_000_000,
-    }
-    return BenchmarkProtocol.model_validate(data)
+def _aggregate_sha256(paths: list[Path], *, root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(paths, key=lambda item: item.relative_to(root).as_posix()):
+        relative = path.relative_to(root).as_posix().encode()
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(bytes.fromhex(_sha256(path)))
+    return digest.hexdigest()
 
 
-def _export_real_input(dataset_name: str, length: int, destination: Path) -> dict:
-    from evalio import datasets as ds
-
-    parsed = ds.parse_config({"name": dataset_name, "length": length})
-    if isinstance(parsed, ds.DatasetConfigError):
-        raise RuntimeError(f"cannot resolve evalio dataset {dataset_name}: {parsed}")
-    sequence, _ = parsed[0]
-    lidar_params = sequence.lidar_params()
-    lidar_t_imu = np.asarray(sequence.imu_T_lidar().inverse().to_mat(), dtype=np.float64)
-
-    scans_dir = destination / "scans"
-    scans_dir.mkdir(parents=True, exist_ok=True)
-    semantic_hash = hashlib.sha256()
-    scans: list[dict] = []
-    for index, measurement in enumerate(sequence.lidar()):
-        if index >= length:
-            break
-        points = np.asarray(measurement.to_vec_positions(), dtype=np.float64)
-        point_times = np.asarray(measurement.to_vec_stamps(), dtype=np.float64)
-        if points.ndim != 2 or points.shape[1] != 3:
-            raise RuntimeError(f"unexpected evalio point shape at scan {index}: {points.shape}")
-        if point_times.shape != (points.shape[0],):
-            raise RuntimeError(f"point timestamp count mismatch at scan {index}")
-        stamp_ns = int(measurement.stamp.to_nsec())
-        filename = f"{index:06d}.npz"
-        np.savez(scans_dir / filename, points=points, point_times_s=point_times)
-        semantic_hash.update(stamp_ns.to_bytes(8, "little", signed=False))
-        semantic_hash.update(np.asarray(points.shape, dtype=np.int64).tobytes())
-        semantic_hash.update(points.tobytes(order="C"))
-        semantic_hash.update(point_times.tobytes(order="C"))
-        scans.append(
-            {
-                "index": index,
-                "file": filename,
-                "stamp_ns": stamp_ns,
-                "point_count": int(points.shape[0]),
-            }
+def _find_kitti_sequence(source: Path, *, length: int) -> tuple[Path, Path]:
+    candidates: list[tuple[Path, Path]] = []
+    for velodyne in source.rglob("velodyne"):
+        if not velodyne.is_dir():
+            continue
+        scan_count = len(list(velodyne.glob("*.bin")))
+        sequence = velodyne.parent
+        if scan_count >= length and (sequence / "calib.txt").is_file():
+            candidates.append((sequence, velodyne))
+    if len(candidates) != 1:
+        raise RuntimeError(
+            f"expected exactly one KITTI sequence with >= {length} scans, found {len(candidates)}"
         )
+    return candidates[0]
 
+
+def _find_required_file(source: Path, sequence: Path, filename: str) -> Path:
+    direct = sequence / filename
+    if direct.is_file():
+        return direct
+    matches = [path for path in source.rglob(filename) if path.is_file()]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected exactly one {filename}, found {len(matches)}")
+    return matches[0]
+
+
+def _copy_first_lines(source: Path, destination: Path, count: int) -> None:
+    lines = source.read_text(encoding="utf-8").splitlines()
+    if len(lines) < count:
+        raise RuntimeError(f"{source} contains {len(lines)} rows, expected at least {count}")
+    destination.write_text("\n".join(lines[:count]) + "\n", encoding="utf-8")
+
+
+def _prepare_input(source: Path, destination: Path, *, length: int, archive: Path) -> dict:
+    sequence, velodyne = _find_kitti_sequence(source, length=length)
+    calib = _find_required_file(source, sequence, "calib.txt")
+    times = _find_required_file(source, sequence, "times.txt")
+    poses = _find_required_file(source, sequence, "poses.txt")
+    scans = sorted(velodyne.glob("*.bin"))[:length]
     if len(scans) != length:
-        raise RuntimeError(f"requested {length} LiDAR scans but evalio yielded {len(scans)}")
+        raise RuntimeError(f"expected {length} scans, found {len(scans)}")
 
+    canonical_sequence = destination / "sequences" / "00"
+    canonical_velodyne = canonical_sequence / "velodyne"
+    canonical_poses = destination / "poses"
+    canonical_velodyne.mkdir(parents=True, exist_ok=True)
+    canonical_poses.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(calib, canonical_sequence / "calib.txt")
+    _copy_first_lines(times, canonical_sequence / "times.txt", length)
+    _copy_first_lines(poses, canonical_poses / "00.txt", length)
+    for scan in scans:
+        shutil.copy2(scan, canonical_velodyne / scan.name)
+
+    selected_sources = [calib, times, poses, *scans]
     manifest = {
         "schema_version": INPUT_SCHEMA,
-        "dataset": dataset_name,
-        "sequence_id": dataset_name.replace("/", "_"),
-        "scan_count": len(scans),
-        "normalized_input_content_sha256": semantic_hash.hexdigest(),
-        "lidar_params": {
-            "num_rows": int(lidar_params.num_rows),
-            "num_columns": int(lidar_params.num_columns),
-            "min_range_m": float(lidar_params.min_range),
-            "max_range_m": float(lidar_params.max_range),
-            "rate_hz": float(lidar_params.rate),
-            "brand": str(lidar_params.brand),
-            "model": str(lidar_params.model),
-        },
-        "lidar_T_imu": lidar_t_imu.tolist(),
-        "point_timestamp_semantics": "seconds_relative_to_scan_start",
-        "scan_timestamp_semantics": "scan_start_int64_nanoseconds",
+        "dataset": "KITTI Odometry",
+        "sequence": "00",
+        "subset": f"first {length} frames",
+        "scan_count": length,
+        "source_provider": "PRBonn/SHINE_mapping convenience subset",
+        "source_url": SOURCE_URL,
+        "source_repository": SOURCE_REPOSITORY,
+        "source_repository_commit": SOURCE_REPOSITORY_COMMIT,
+        "source_archive_sha256": _sha256(archive),
+        "selected_source_content_sha256": _aggregate_sha256(selected_sources, root=source),
+        "body_frame": "KITTI Velodyne LiDAR frame",
+        "ground_truth_source_frame": "KITTI camera reference frame",
+        "ground_truth_body_conversion": "inv(Tr) @ T_camera @ Tr",
+        "timestamp_source": "sequences/00/times.txt",
         "kiss_config": KISS_CONFIG,
-        "scans": scans,
     }
-    (destination / "manifest.json").write_text(
+    (destination / "lidarperf_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     (destination / "kiss_config.yaml").write_text(
@@ -122,19 +133,29 @@ def _export_real_input(dataset_name: str, length: int, destination: Path) -> dic
     return manifest
 
 
+def _validation_protocol(root: Path) -> BenchmarkProtocol:
+    data = yaml.safe_load((root / "protocols/lo/se3_v1.yaml").read_text(encoding="utf-8"))
+    return BenchmarkProtocol.model_validate(data)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--evalio-results", type=Path, required=True)
-    parser.add_argument("--dataset", default="hilti_2022/basement_2")
-    parser.add_argument("--pipeline", default="kiss")
-    parser.add_argument("--length", type=int, default=120)
+    parser.add_argument("--source", type=Path, required=True)
+    parser.add_argument("--archive", type=Path, required=True)
+    parser.add_argument("--length", type=int, default=100)
     parser.add_argument("--image", default="lidarperf-step16-kiss:1.3.0")
     parser.add_argument(
-        "--output", type=Path, default=Path("docs/validation/step16_docker_kiss_hilti.json")
+        "--output", type=Path, default=Path("docs/validation/step16_docker_kiss_kitti.json")
     )
     args = parser.parse_args()
-    if args.length <= 0:
-        raise ValueError("length must be positive")
+    if args.length <= 1:
+        raise ValueError("length must be greater than one")
+    source = args.source.resolve()
+    archive = args.archive.resolve()
+    if not source.is_dir():
+        raise FileNotFoundError(f"KITTI source directory does not exist: {source}")
+    if not archive.is_file():
+        raise FileNotFoundError(f"KITTI source archive does not exist: {archive}")
 
     root = Path(__file__).resolve().parents[1]
     work = (root / ".step16-docker-kiss").resolve()
@@ -145,23 +166,8 @@ def main() -> None:
     input_dir.mkdir(parents=True)
     output_dir.mkdir()
 
-    exported = _export_real_input(args.dataset, args.length, input_dir)
-    evalio_paths = expected_evalio_result_paths(
-        args.evalio_results, dataset=args.dataset, pipeline=args.pipeline
-    )
+    manifest = _prepare_input(source, input_dir, length=args.length, archive=archive)
     protocol = _validation_protocol(root)
-    native_estimate = load_evalio_trajectory(
-        evalio_paths.estimate, body_frame=protocol.trajectory.evaluation_frame
-    )
-    reference = load_evalio_trajectory(
-        evalio_paths.ground_truth, body_frame=protocol.trajectory.evaluation_frame
-    )
-    support = EvaluationSupport(
-        start_ns=int(exported["scans"][0]["stamp_ns"]),
-        end_ns=int(exported["scans"][-1]["stamp_ns"]),
-    )
-    native_eval = evaluate_trajectory(native_estimate, reference, protocol, support=support)
-
     affinity = sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else []
     cpu_cores = tuple(affinity[:1])
     backend = DockerBackend()
@@ -180,7 +186,7 @@ def main() -> None:
         memory_limit_bytes=2 * 1024 * 1024 * 1024,
         network="none",
         environment={"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1"},
-        timeout_s=180.0,
+        timeout_s=300.0,
     )
     execution = backend.execute(spec, combined_output_log=process_log)
     if not execution.succeeded:
@@ -193,26 +199,32 @@ def main() -> None:
     estimator_meta = json.loads((output_dir / "estimator.json").read_text(encoding="utf-8"))
     if estimator_meta.get("version") != "1.3.0":
         raise RuntimeError(f"unexpected KISS version: {estimator_meta.get('version')!r}")
-    docker_estimate = load_tum(
-        output_dir / "trajectory.tum", body_frame=protocol.trajectory.evaluation_frame
-    )
-    docker_eval = evaluate_trajectory(docker_estimate, reference, protocol, support=support)
+    if estimator_meta.get("evaluation_frame") != manifest["body_frame"]:
+        raise RuntimeError("container and host disagree on the evaluation body frame")
 
-    if len(docker_estimate) != args.length:
+    estimate = load_tum(output_dir / "trajectory.tum", body_frame="body")
+    reference = load_tum(output_dir / "ground_truth.tum", body_frame="body")
+    if len(estimate) != args.length or len(reference) != args.length:
         raise RuntimeError(
-            f"Docker KISS produced {len(docker_estimate)} poses for {args.length} scans"
+            "unexpected trajectory lengths: "
+            f"estimate={len(estimate)}, reference={len(reference)}, expected={args.length}"
         )
-    if docker_eval.association.matched_pose_count < int(args.length * 0.95):
+    support = EvaluationSupport(
+        start_ns=int(estimate.timestamps_ns[0]),
+        end_ns=int(estimate.timestamps_ns[-1]),
+    )
+    evaluation = evaluate_trajectory(estimate, reference, protocol, support=support)
+    if evaluation.association.matched_pose_count != args.length:
         raise RuntimeError(
-            "too few Docker KISS poses associated to ground truth: "
-            f"{docker_eval.association.matched_pose_count}"
+            f"exact timestamp association matched {evaluation.association.matched_pose_count} "
+            f"of {args.length} poses"
         )
-    if not docker_eval.temporal_coverage_pass:
+    if not evaluation.temporal_coverage_pass:
         raise RuntimeError(
             "Docker KISS trajectory failed temporal coverage: "
-            f"{docker_eval.association.temporal_coverage:.6f}"
+            f"{evaluation.association.temporal_coverage:.6f}"
         )
-    if docker_eval.ape_translation_m is None or docker_eval.ape_rotation_deg is None:
+    if evaluation.ape_translation_m is None or evaluation.ape_rotation_deg is None:
         raise RuntimeError("Docker KISS validation did not produce required APE metrics")
 
     evidence = {
@@ -223,14 +235,7 @@ def main() -> None:
             "ordinary GitHub-hosted runner; Docker v0.1 intentionally does not claim "
             "authoritative container process CPU/memory accounting"
         ),
-        "dataset": {
-            "id": args.dataset,
-            "requested_lidar_scans": args.length,
-            "normalized_input_content_sha256": exported["normalized_input_content_sha256"],
-            "input_support": {"start_ns": support.start_ns, "end_ns": support.end_ns},
-            "lidar_params": exported["lidar_params"],
-            "point_timestamp_semantics": exported["point_timestamp_semantics"],
-        },
+        "dataset": manifest,
         "estimator": estimator_meta,
         "container": {
             "execution_metadata": execution.execution_metadata(),
@@ -239,25 +244,20 @@ def main() -> None:
             "return_code": execution.return_code,
             "timed_out": execution.timed_out,
             "process_log_sha256": _sha256(process_log),
-            "dockerfile_sha256": _sha256(root / "docker/validation/kiss-evalio/Dockerfile"),
-            "runner_sha256": _sha256(root / "docker/validation/kiss-evalio/runner.py"),
+            "dockerfile_sha256": _sha256(root / "docker/validation/kiss-kitti/Dockerfile"),
+            "runner_sha256": _sha256(root / "docker/validation/kiss-kitti/runner.py"),
         },
-        "docker_result": {
-            "pose_count": len(docker_estimate),
+        "result": {
+            "estimate_pose_count": len(estimate),
+            "reference_pose_count": len(reference),
             "trajectory_sha256": _sha256(output_dir / "trajectory.tum"),
-            "metrics": docker_eval.metric_values(),
+            "ground_truth_sha256": _sha256(output_dir / "ground_truth.tum"),
+            "metrics": evaluation.metric_values(),
         },
-        "native_evalio_reference_path": {
-            "pipeline": args.pipeline,
-            "pose_count": len(native_estimate),
-            "estimate_sha256": _sha256(evalio_paths.estimate),
-            "ground_truth_sha256": _sha256(evalio_paths.ground_truth),
-            "metrics": native_eval.metric_values(),
-            "comparison_scope": (
-                "descriptive cross-backend integration check only; execution/thread environments "
-                "are not declared performance-comparable"
-            ),
-        },
+        "scientific_scope": (
+            "functional real-data integration evidence for the Docker execution path; not an "
+            "authoritative performance baseline or a publication-grade KISS-ICP ranking"
+        ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
