@@ -48,7 +48,9 @@ def main() -> None:
     )
     pipeline.run()
 
-    timestamps = np.asarray(dataset.get_frames_timestamps(), dtype=np.float64).reshape(-1)[:expected]
+    timestamps = np.asarray(
+        dataset.get_frames_timestamps(), dtype=np.float64
+    ).reshape(-1)[:expected]
     raw_estimate = np.asarray(pipeline.poses[:expected], dtype=np.float64)
     raw_ground_truth = np.asarray(dataset.gt_poses[:expected], dtype=np.float64)
     _write_tum(OUTPUT / "trajectory.tum", raw_estimate, timestamps)
