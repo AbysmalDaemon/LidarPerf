@@ -14,6 +14,21 @@ OUTPUT = Path("/output")
 SEQUENCE = "00"
 
 
+class _Step16OdometryPipeline(OdometryPipeline):
+    """Normalize KISS-ICP 1.3.0 KITTI timestamps without changing their values.
+
+    The 1.3.0 KITTI loader returns frame timestamps with shape ``(N, 1)`` while
+    the pipeline's TUM writer converts each indexed timestamp with ``float()``.
+    New NumPy versions reject converting a one-dimensional array to a scalar.
+    Flattening the timestamp array here preserves every timestamp value and lets
+    the unmodified KISS pipeline complete its normal output/evaluation path.
+    """
+
+    def _get_frames_timestamps(self) -> np.ndarray:
+        timestamps = super()._get_frames_timestamps()
+        return np.asarray(timestamps, dtype=np.float64).reshape(-1)
+
+
 def _write_tum(path: Path, poses: np.ndarray, timestamps: np.ndarray) -> None:
     if len(poses) != len(timestamps):
         raise ValueError("pose and timestamp counts differ")
@@ -40,7 +55,7 @@ def main() -> None:
     if len(dataset) != expected:
         raise ValueError(f"expected {expected} KITTI scans, found {len(dataset)}")
 
-    pipeline = OdometryPipeline(
+    pipeline = _Step16OdometryPipeline(
         dataset=dataset,
         config=INPUT / "kiss_config.yaml",
         visualize=False,
@@ -65,6 +80,11 @@ def main() -> None:
         "input_scan_count": expected,
         "evaluation_frame": "KITTI Velodyne LiDAR frame",
         "ground_truth_conversion": "inv(Tr) @ T_camera @ Tr",
+        "compatibility_adapter": {
+            "reason": "KISS-ICP 1.3.0 KITTI timestamps are Nx1; current NumPy rejects float(array([timestamp])) in the upstream TUM writer",
+            "operation": "flatten frame timestamp array from Nx1 to N before the upstream KISS output path",
+            "timestamp_values_changed": False,
+        },
         "configuration": manifest["kiss_config"],
         "outputs": {
             "estimate": "trajectory.tum",
