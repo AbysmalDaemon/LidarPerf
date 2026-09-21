@@ -24,7 +24,7 @@ KITTI_CAPTURE_RATE_HZ = 10.0
 KITTI_RATE_SOURCE = "https://www.cvlibs.net/datasets/kitti/raw_data.php"
 
 KISS_CONFIG = {
-    "out_dir": "/output/kiss",
+    "out_dir": "/tmp/kiss",
     "data": {"max_range": 100.0, "min_range": 0.0, "deskew": False},
     "mapping": {"voxel_size": 1.0, "max_points_per_voxel": 20},
     "registration": {
