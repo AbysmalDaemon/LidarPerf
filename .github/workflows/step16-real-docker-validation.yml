@@ -6,6 +6,8 @@ on:
       - step16-real-docker-estimator
     paths:
       - .github/workflows/step16-real-docker-validation.yml
+      - docker/validation/kiss-kitti/**
+      - scripts/run_step16_real_docker_kiss.py
 
 permissions:
   contents: write
