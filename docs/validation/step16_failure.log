@@ -1,0 +1,261 @@
+{
+  "authority_reason": "ordinary GitHub-hosted runner; Docker v0.1 intentionally does not claim authoritative container process CPU/memory accounting",
+  "container": {
+    "dockerfile_sha256": "37e8369309db3df651a3b810547b6a3fc6d8eb82279ef28f1a66b94e3b89ed1e",
+    "execution_metadata": {
+      "backend": "docker-cli",
+      "backend_version": {
+        "client": "28.0.4",
+        "server": "28.0.4"
+      },
+      "capabilities": {
+        "authoritative_process_accounting": false,
+        "backend": "docker-cli",
+        "client_version": "28.0.4",
+        "daemon_reachable": true,
+        "default_timing_scope": "end_to_end",
+        "installed": true,
+        "internal_phase_timing": false,
+        "peak_memory": false,
+        "per_frame_latency": false,
+        "process_cpu_time": false,
+        "process_wall_time": true,
+        "reason": null,
+        "schema_version": "lidarperf.docker-capability.v1",
+        "server_version": "28.0.4"
+      },
+      "container": {
+        "command": [],
+        "cpu_allocation": [
+          0
+        ],
+        "digest_kind": "image_id",
+        "entrypoint": null,
+        "environment": {
+          "MKL_NUM_THREADS": "1",
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1"
+        },
+        "gpu_access": {
+          "device_ids": [],
+          "mode": "none"
+        },
+        "image": "lidarperf-step16-kiss:1.3.0",
+        "image_id": "sha256:05a60df6a2511c27e5118571902030999fe0a49469cf809ad250a04b7bd6626d",
+        "immutable_image_digest": "sha256:05a60df6a2511c27e5118571902030999fe0a49469cf809ad250a04b7bd6626d",
+        "memory_limit_bytes": 2147483648,
+        "mounts": [
+          {
+            "read_only": true,
+            "source": "/home/runner/work/LidarPerf/LidarPerf/.step16-docker-kiss/input",
+            "target": "/input"
+          },
+          {
+            "read_only": false,
+            "source": "/home/runner/work/LidarPerf/LidarPerf/.step16-docker-kiss/output",
+            "target": "/output"
+          }
+        ],
+        "network": "none",
+        "pull_policy": "never",
+        "repo_digest": null,
+        "working_directory": null
+      },
+      "timing_scope": "end_to_end"
+    },
+    "image": {
+      "digest_kind": "image_id",
+      "image_id": "sha256:05a60df6a2511c27e5118571902030999fe0a49469cf809ad250a04b7bd6626d",
+      "immutable_digest": "sha256:05a60df6a2511c27e5118571902030999fe0a49469cf809ad250a04b7bd6626d",
+      "repo_digest": null,
+      "requested_image": "lidarperf-step16-kiss:1.3.0",
+      "schema_version": "lidarperf.docker-image.v1"
+    },
+    "process_log_sha256": "30c2e9bc243aed635b0ff1cde0f5a22b600e185a7a04ed00865ccfc4dfa62369",
+    "return_code": 0,
+    "runner_sha256": "e19e89449038ad38866cbae45664e1af20943ae58f7ecc9c77d56af5aa0d4025",
+    "timed_out": false,
+    "wall_time_s": 6.027548314
+  },
+  "dataset": {
+    "body_frame": "KITTI Velodyne LiDAR frame",
+    "canonical_times_sha256": "5a9985b84be4bd96e36184b473314f4f46f472c485e978d11a8efd94c8e9128c",
+    "dataset": "KITTI Odometry",
+    "ground_truth_body_conversion": "inv(Tr) @ T_camera @ Tr",
+    "ground_truth_source_frame": "KITTI camera reference frame",
+    "kiss_config": {
+      "adaptive_threshold": {
+        "initial_threshold": 2.0,
+        "min_motion_th": 0.1
+      },
+      "data": {
+        "deskew": false,
+        "max_range": 100.0,
+        "min_range": 0.0
+      },
+      "mapping": {
+        "max_points_per_voxel": 20,
+        "voxel_size": 1.0
+      },
+      "out_dir": "/output/kiss",
+      "registration": {
+        "convergence_criterion": 0.0001,
+        "max_num_iterations": 500,
+        "max_num_threads": 1
+      }
+    },
+    "point_timestamp_semantics": "compact KITTI fixture contains no per-point timestamps; KISS deskew is disabled",
+    "scan_count": 100,
+    "schema_version": "lidarperf.step16-kitti-input.v1",
+    "selected_source_content_sha256": "98bd75b3a85d212ee56a1b7cb47f8fca99530f597bf9957e65e64bfe660d1058",
+    "sequence": "00",
+    "source_archive_sha256": "37104c4f6d5fbb69ef4fef74cdacae6cd07732098b21811b6c124ed2da237e84",
+    "source_provider": "PRBonn/SHINE_mapping convenience subset",
+    "source_repository": "https://github.com/PRBonn/SHINE_mapping",
+    "source_repository_commit": "0fbaf8a2a8ebd64d9819c81f823fe0ecc5d344bb",
+    "source_url": "https://uni-bonn.sciebo.de/s/KwOuBiPZi8vSz2O/download",
+    "subset": "first 100 frames",
+    "timestamp_source": {
+      "authority": "official KITTI documentation states synchronized data are captured at 10 Hz",
+      "authority_url": "https://www.cvlibs.net/datasets/kitti/raw_data.php",
+      "capture_rate_hz": 10.0,
+      "mode": "reconstructed_frame_index_fixed_rate",
+      "rule": "timestamp_seconds = zero_based_frame_index / 10.0",
+      "source_times_file_present": false
+    }
+  },
+  "estimator": {
+    "compatibility_adapter": {
+      "operation": "flatten frame timestamp array from Nx1 to N before the upstream KISS output path",
+      "reason": "KISS-ICP 1.3.0 KITTI timestamps are Nx1; current NumPy rejects float(array([timestamp])) in the upstream TUM writer",
+      "timestamp_values_changed": false
+    },
+    "configuration": {
+      "adaptive_threshold": {
+        "initial_threshold": 2.0,
+        "min_motion_th": 0.1
+      },
+      "data": {
+        "deskew": false,
+        "max_range": 100.0,
+        "min_range": 0.0
+      },
+      "mapping": {
+        "max_points_per_voxel": 20,
+        "voxel_size": 1.0
+      },
+      "out_dir": "/output/kiss",
+      "registration": {
+        "convergence_criterion": 0.0001,
+        "max_num_iterations": 500,
+        "max_num_threads": 1
+      }
+    },
+    "dataset_loader": "kiss_icp.datasets.kitti.KITTIOdometryDataset",
+    "evaluation_frame": "KITTI Velodyne LiDAR frame",
+    "ground_truth_conversion": "inv(Tr) @ T_camera @ Tr",
+    "input_scan_count": 100,
+    "name": "KISS-ICP",
+    "outputs": {
+      "estimate": "trajectory.tum",
+      "ground_truth": "ground_truth.tum"
+    },
+    "schema_version": "lidarperf.step16-estimator.v1",
+    "source_repository": "https://github.com/PRBonn/kiss-icp",
+    "version": "1.3.0"
+  },
+  "performance_authoritative": false,
+  "result": {
+    "estimate_pose_count": 100,
+    "ground_truth_sha256": "c6a56956996e447fa57e36ff93bdbd50b8adbc3ea411ff0a91ad3b24718fe781",
+    "metrics": {
+      "alignment.transform": {
+        "mode": "se3",
+        "rotation_matrix": [
+          [
+            0.9999999661995423,
+            3.7831598129835324e-05,
+            -0.0002572346857300154
+          ],
+          [
+            -5.1630258847488615e-05,
+            0.99854872548484,
+            -0.05385573476352561
+          ],
+          [
+            0.0002548239190716256,
+            0.0538557462242706,
+            0.9985486936866913
+          ]
+        ],
+        "translation_m": [
+          -0.21674877268200987,
+          -0.013007576156810252,
+          0.022872488089273557
+        ]
+      },
+      "ape.rotation.rmse_deg": 2.9016149298921117,
+      "ape.translation.rmse_m": 0.11680941817259768,
+      "association.interpolated_pose_count": 0,
+      "association.matched_pose_count": 100,
+      "association.max_abs_time_delta_ns": 0,
+      "association.mean_abs_time_delta_ns": 0.0,
+      "association.mode": "exact",
+      "association.unmatched_estimate_pose_count": 0,
+      "coverage.distance_fraction": 1.0,
+      "coverage.input_support_end_ns": 9900000000,
+      "coverage.input_support_start_ns": 0,
+      "coverage.support_end_ns": 9900000000,
+      "coverage.support_start_ns": 0,
+      "coverage.temporal_fraction": 1.0,
+      "coverage.temporal_min_required": 0.98,
+      "coverage.temporal_pass": true,
+      "rpe.distance_100m.pair_count": 0,
+      "rpe.distance_100m.pairing": "all_starts_nearest_reference_distance",
+      "rpe.distance_100m.relative_tolerance": 0.1,
+      "rpe.distance_10m.pair_count": 83,
+      "rpe.distance_10m.pairing": "all_starts_nearest_reference_distance",
+      "rpe.distance_10m.relative_tolerance": 0.1,
+      "rpe.distance_10m.rotation.rmse_deg": 0.16730190571080722,
+      "rpe.distance_10m.rotation.rmse_deg_per_m": 0.016976631689821067,
+      "rpe.distance_10m.translation.rmse_m": 0.05987197502915411,
+      "rpe.distance_10m.translation.rmse_percent": 0.6034658197626394,
+      "trajectory.estimate.invalid_pose_count": 0,
+      "trajectory.reference.invalid_pose_count": 0
+    },
+    "reference_pose_count": 100,
+    "trajectory_sha256": "b06f20f6d00905a8fa5049d357eead66c0aa737b5515b1e63b6e2b3c35d7b991"
+  },
+  "schema_version": "lidarperf.step16-docker-kiss-kitti-validation.v1",
+  "scientific_scope": "functional real-data integration evidence for the Docker execution path; not an authoritative performance baseline or a publication-grade KISS-ICP ranking",
+  "validation_protocol": {
+    "association": "exact",
+    "base": "protocols/lo/se3_v1.yaml",
+    "motion_compensation": "raw input; none performed; compact KITTI has no point times",
+    "timestamp_reconstruction": {
+      "authority": "official KITTI documentation states synchronized data are captured at 10 Hz",
+      "authority_url": "https://www.cvlibs.net/datasets/kitti/raw_data.php",
+      "capture_rate_hz": 10.0,
+      "mode": "reconstructed_frame_index_fixed_rate",
+      "rule": "timestamp_seconds = zero_based_frame_index / 10.0",
+      "source_times_file_present": false
+    }
+  },
+  "validation_scope": "real_estimator_real_dataset_docker_functional_integration"
+}
+Traceback (most recent call last):
+  File "/home/runner/work/LidarPerf/LidarPerf/scripts/run_step16_real_docker_kiss.py", line 336, in <module>
+    main()
+  File "/home/runner/work/LidarPerf/LidarPerf/scripts/run_step16_real_docker_kiss.py", line 332, in main
+    shutil.rmtree(work)
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/shutil.py", line 752, in rmtree
+    _rmtree_safe_fd(fd, path, onerror)
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/shutil.py", line 672, in _rmtree_safe_fd
+    _rmtree_safe_fd(dirfd, fullname, onerror)
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/shutil.py", line 672, in _rmtree_safe_fd
+    _rmtree_safe_fd(dirfd, fullname, onerror)
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/shutil.py", line 703, in _rmtree_safe_fd
+    onerror(os.unlink, fullname, sys.exc_info())
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/shutil.py", line 701, in _rmtree_safe_fd
+    os.unlink(entry.name, dir_fd=topfd)
+PermissionError: [Errno 13] Permission denied: 'latest'
