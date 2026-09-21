@@ -20,6 +20,8 @@ INPUT_SCHEMA = "lidarperf.step16-kitti-input.v1"
 SOURCE_URL = "https://uni-bonn.sciebo.de/s/KwOuBiPZi8vSz2O/download"
 SOURCE_REPOSITORY = "https://github.com/PRBonn/SHINE_mapping"
 SOURCE_REPOSITORY_COMMIT = "0fbaf8a2a8ebd64d9819c81f823fe0ecc5d344bb"
+KITTI_CAPTURE_RATE_HZ = 10.0
+KITTI_RATE_SOURCE = "https://www.cvlibs.net/datasets/kitti/raw_data.php"
 
 KISS_CONFIG = {
     "out_dir": "/output/kiss",
@@ -78,6 +80,16 @@ def _find_required_file(source: Path, sequence: Path, filename: str) -> Path:
     return matches[0]
 
 
+def _find_optional_file(source: Path, sequence: Path, filename: str) -> Path | None:
+    direct = sequence / filename
+    if direct.is_file():
+        return direct
+    matches = [path for path in source.rglob(filename) if path.is_file()]
+    if len(matches) > 1:
+        raise RuntimeError(f"expected at most one {filename}, found {len(matches)}")
+    return matches[0] if matches else None
+
+
 def _copy_first_lines(source: Path, destination: Path, count: int) -> None:
     lines = source.read_text(encoding="utf-8").splitlines()
     if len(lines) < count:
@@ -85,10 +97,15 @@ def _copy_first_lines(source: Path, destination: Path, count: int) -> None:
     destination.write_text("\n".join(lines[:count]) + "\n", encoding="utf-8")
 
 
+def _write_reconstructed_times(destination: Path, count: int) -> None:
+    values = (f"{index / KITTI_CAPTURE_RATE_HZ:.9f}" for index in range(count))
+    destination.write_text("\n".join(values) + "\n", encoding="utf-8")
+
+
 def _prepare_input(source: Path, destination: Path, *, length: int, archive: Path) -> dict:
     sequence, velodyne = _find_kitti_sequence(source, length=length)
     calib = _find_required_file(source, sequence, "calib.txt")
-    times = _find_required_file(source, sequence, "times.txt")
+    source_times = _find_optional_file(source, sequence, "times.txt")
     poses = _find_required_file(source, sequence, "poses.txt")
     scans = sorted(velodyne.glob("*.bin"))[:length]
     if len(scans) != length:
@@ -100,12 +117,31 @@ def _prepare_input(source: Path, destination: Path, *, length: int, archive: Pat
     canonical_velodyne.mkdir(parents=True, exist_ok=True)
     canonical_poses.mkdir(parents=True, exist_ok=True)
     shutil.copy2(calib, canonical_sequence / "calib.txt")
-    _copy_first_lines(times, canonical_sequence / "times.txt", length)
+    canonical_times = canonical_sequence / "times.txt"
+    if source_times is None:
+        _write_reconstructed_times(canonical_times, length)
+        timestamp_source = {
+            "mode": "reconstructed_frame_index_fixed_rate",
+            "source_times_file_present": False,
+            "capture_rate_hz": KITTI_CAPTURE_RATE_HZ,
+            "rule": "timestamp_seconds = zero_based_frame_index / 10.0",
+            "authority": "official KITTI documentation states synchronized data are captured at 10 Hz",
+            "authority_url": KITTI_RATE_SOURCE,
+        }
+    else:
+        _copy_first_lines(source_times, canonical_times, length)
+        timestamp_source = {
+            "mode": "published_times_file",
+            "source_times_file_present": True,
+            "source_relative_path": source_times.relative_to(source).as_posix(),
+        }
     _copy_first_lines(poses, canonical_poses / "00.txt", length)
     for scan in scans:
         shutil.copy2(scan, canonical_velodyne / scan.name)
 
-    selected_sources = [calib, times, poses, *scans]
+    selected_sources = [calib, poses, *scans]
+    if source_times is not None:
+        selected_sources.append(source_times)
     manifest = {
         "schema_version": INPUT_SCHEMA,
         "dataset": "KITTI Odometry",
@@ -121,7 +157,11 @@ def _prepare_input(source: Path, destination: Path, *, length: int, archive: Pat
         "body_frame": "KITTI Velodyne LiDAR frame",
         "ground_truth_source_frame": "KITTI camera reference frame",
         "ground_truth_body_conversion": "inv(Tr) @ T_camera @ Tr",
-        "timestamp_source": "sequences/00/times.txt",
+        "timestamp_source": timestamp_source,
+        "canonical_times_sha256": _sha256(canonical_times),
+        "point_timestamp_semantics": (
+            "compact KITTI fixture contains no per-point timestamps; KISS deskew is disabled"
+        ),
         "kiss_config": KISS_CONFIG,
     }
     (destination / "lidarperf_manifest.json").write_text(
@@ -135,6 +175,20 @@ def _prepare_input(source: Path, destination: Path, *, length: int, archive: Pat
 
 def _validation_protocol(root: Path) -> BenchmarkProtocol:
     data = yaml.safe_load((root / "protocols/lo/se3_v1.yaml").read_text(encoding="utf-8"))
+    data["preprocessing"]["motion_compensation"] = {
+        "input_state": "raw",
+        "performed_by": "none",
+        "motion_source": "none",
+        "parameters": {},
+    }
+    data["preprocessing"]["timestamp_reconstruction"] = {
+        "owner": "dataset",
+        "parameters": {
+            "rule": "timestamp_seconds = zero_based_frame_index / 10.0",
+            "capture_rate_hz": KITTI_CAPTURE_RATE_HZ,
+            "reason": "PRBonn compact KITTI fixture omits sequences/00/times.txt",
+        },
+    }
     return BenchmarkProtocol.model_validate(data)
 
 
@@ -185,7 +239,11 @@ def main() -> None:
         cpu_cores=cpu_cores,
         memory_limit_bytes=2 * 1024 * 1024 * 1024,
         network="none",
-        environment={"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1"},
+        environment={
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+        },
         timeout_s=300.0,
     )
     execution = backend.execute(spec, combined_output_log=process_log)
@@ -236,6 +294,12 @@ def main() -> None:
             "authoritative container process CPU/memory accounting"
         ),
         "dataset": manifest,
+        "validation_protocol": {
+            "base": "protocols/lo/se3_v1.yaml",
+            "association": "exact",
+            "motion_compensation": "raw input; none performed; compact KITTI has no point times",
+            "timestamp_reconstruction": manifest["timestamp_source"],
+        },
         "estimator": estimator_meta,
         "container": {
             "execution_metadata": execution.execution_metadata(),
