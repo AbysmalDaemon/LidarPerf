@@ -5,7 +5,6 @@ import shutil
 from pathlib import Path
 
 import numpy as np
-
 from kiss_icp import __version__ as kiss_version
 from kiss_icp.pipeline import OdometryPipeline
 
