@@ -39,12 +39,25 @@ jobs:
         run: docker build -t lidarperf-step16-kiss:1.3.0 docker/validation/kiss-kitti
       - name: Execute real estimator through DockerBackend
         run: |
+          set +e
           python scripts/run_step16_real_docker_kiss.py \
             --source .step16-source \
             --archive .step16-source/kitti_example.tar.gz \
             --length 100 \
             --image lidarperf-step16-kiss:1.3.0 \
-            --output docs/validation/step16_docker_kiss_kitti.json
+            --output docs/validation/step16_docker_kiss_kitti.json \
+            2>&1 | tee .step16-failure.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            cp .step16-failure.log docs/validation/step16_failure.log
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add docs/validation/step16_failure.log
+            git commit -m 'test: retain Step 16 failure diagnostic'
+            git push origin HEAD:step16-real-docker-estimator
+            exit "$status"
+          fi
       - name: Validate permanent code and evidence
         run: |
           ruff check .
@@ -72,9 +85,10 @@ jobs:
           PY
       - name: Commit durable evidence and self-delete
         run: |
+          rm -f docs/validation/step16_failure.log
           rm .github/workflows/step16-real-docker-validation.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A docs/validation/step16_docker_kiss_kitti.json .github/workflows/step16-real-docker-validation.yml
+          git add -A docs/validation/step16_docker_kiss_kitti.json docs/validation/step16_failure.log .github/workflows/step16-real-docker-validation.yml
           git commit -m 'test: record real Docker KISS KITTI evidence'
           git push origin HEAD:step16-real-docker-estimator
